@@ -1,26 +1,92 @@
 package client
 
+import (
+	"encoding/json"
+)
+
 type ResponseHeader struct {
 	Code    int    `json:"code"`
 	Message string `json:"msg"`
 }
 
+type DatabaseEntry struct {
+	Name string
+}
+
+func (d *DatabaseEntry) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		d.Name = s
+		return nil
+	}
+	var obj struct {
+		Database string `json:"database"`
+		Name     string `json:"name"`
+	}
+	if err := json.Unmarshal(data, &obj); err == nil {
+		if obj.Database != "" {
+			d.Name = obj.Database
+		} else {
+			d.Name = obj.Name
+		}
+		return nil
+	}
+	return nil
+}
+
 type ListDatabasesResponse struct {
 	ResponseHeader
-	Databases []struct {
-		Database string `json:"database"`
-	} `json:"databases"`
+	Databases     []DatabaseEntry `json:"databases"`
+	AffectedCount int             `json:"affectedCount,omitempty"`
 }
 
 type ListCollectionsRequest struct {
 	Database string `json:"database"`
 }
 
+type CollectionEntry struct {
+	Database    string        `json:"database,omitempty"`
+	Collection  string        `json:"collection,omitempty"`
+	ReplicaNum  uint32        `json:"replicaNum,omitempty"`
+	ShardNum    uint32        `json:"shardNum,omitempty"`
+	Description string        `json:"description,omitempty"`
+	Indexes     []IndexColumn `json:"indexes,omitempty"`
+}
+
+func (c *CollectionEntry) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		c.Collection = s
+		return nil
+	}
+	var obj struct {
+		Database    string        `json:"database"`
+		Collection  string        `json:"collection"`
+		Name        string        `json:"name"`
+		ReplicaNum  uint32        `json:"replicaNum"`
+		ShardNum    uint32        `json:"shardNum"`
+		Description string        `json:"description"`
+		Indexes     []IndexColumn `json:"indexes"`
+	}
+	if err := json.Unmarshal(data, &obj); err == nil {
+		c.Database = obj.Database
+		if obj.Collection != "" {
+			c.Collection = obj.Collection
+		} else {
+			c.Collection = obj.Name
+		}
+		c.ReplicaNum = obj.ReplicaNum
+		c.ShardNum = obj.ShardNum
+		c.Description = obj.Description
+		c.Indexes = obj.Indexes
+		return nil
+	}
+	return nil
+}
+
 type ListCollectionsResponse struct {
 	ResponseHeader
-	Collections []struct {
-		Collection string `json:"collection"`
-	} `json:"collections"`
+	Collections []CollectionEntry `json:"collections"`
 }
 
 type DescribeCollectionRequest struct {
@@ -31,26 +97,36 @@ type DescribeCollectionRequest struct {
 type FieldMeta struct {
 	FieldName   string `json:"fieldName"`
 	FieldType   string `json:"fieldType"`
-	FieldUsage  string `json:"fieldUsage"`
-	PrimaryKey  bool   `json:"primaryKey"`
-	Description string `json:"description"`
+	FieldUsage  string `json:"fieldUsage,omitempty"`
+	PrimaryKey  bool   `json:"primaryKey,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
-type IndexMeta struct {
-	FieldName  string                 `json:"fieldName"`
-	IndexType  string                 `json:"indexType"`
-	MetricType string                 `json:"metricType"`
-	Params     map[string]interface{} `json:"params"`
+type IndexParams struct {
+	M              uint32 `json:"M,omitempty"`
+	EfConstruction uint32 `json:"efConstruction,omitempty"`
+	Nprobe         uint32 `json:"nprobe,omitempty"`
+	Nlist          uint32 `json:"nlist,omitempty"`
+}
+
+type IndexColumn struct {
+	FieldName    string                 `json:"fieldName,omitempty"`
+	FieldType    string                 `json:"fieldType,omitempty"`
+	IndexType    string                 `json:"indexType,omitempty"`
+	Dimension    uint32                 `json:"dimension,omitempty"`
+	MetricType   string                 `json:"metricType,omitempty"`
+	IndexedCount uint64                 `json:"indexedCount,omitempty"`
+	Params       map[string]interface{} `json:"params,omitempty"`
 }
 
 type CollectionMeta struct {
-	Database    string      `json:"database"`
-	Collection  string      `json:"collection"`
-	ReplicaNum  int         `json:"replicaNum"`
-	ShardNum    int         `json:"shardNum"`
-	Description string      `json:"description"`
-	Fields      []FieldMeta `json:"fields"`
-	Indexes     []IndexMeta `json:"indexes"`
+	Database    string        `json:"database"`
+	Collection  string        `json:"collection"`
+	ReplicaNum  uint32        `json:"replicaNum"`
+	ShardNum    uint32        `json:"shardNum"`
+	Description string        `json:"description,omitempty"`
+	Fields      []FieldMeta   `json:"fields,omitempty"`
+	Indexes     []IndexColumn `json:"indexes,omitempty"`
 }
 
 type DescribeCollectionResponse struct {
@@ -58,18 +134,22 @@ type DescribeCollectionResponse struct {
 	Collection CollectionMeta `json:"collection"`
 }
 
+type QueryCond struct {
+	DocumentIds    []string `json:"documentIds,omitempty"`
+	RetrieveVector bool     `json:"retrieveVector"`
+	Filter         string   `json:"filter,omitempty"`
+	Limit          int64    `json:"limit,omitempty"`
+	Offset         int64    `json:"offset,omitempty"`
+}
+
 type QueryDocumentRequest struct {
-	Database   string `json:"database"`
-	Collection string `json:"collection"`
-	Query      struct {
-		Limit  int    `json:"limit"`
-		Offset int    `json:"offset"`
-		Filter string `json:"filter,omitempty"`
-	} `json:"query"`
+	Database   string     `json:"database"`
+	Collection string     `json:"collection"`
+	Query      *QueryCond `json:"query,omitempty"`
 }
 
 type QueryDocumentResponse struct {
 	ResponseHeader
-	Count     int                      `json:"count"`
+	Count     uint64                   `json:"count"`
 	Documents []map[string]interface{} `json:"documents"`
 }

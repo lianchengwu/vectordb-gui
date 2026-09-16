@@ -4,6 +4,6 @@
 export type {
     CollectionMeta,
     FieldMeta,
-    IndexMeta,
+    IndexColumn,
     QueryDocumentResponse
 } from "./models.js";

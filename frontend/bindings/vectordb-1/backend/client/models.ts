@@ -6,24 +6,27 @@ export interface CollectionMeta {
     "collection": string;
     "replicaNum": number;
     "shardNum": number;
-    "description": string;
-    "fields": FieldMeta[] | null;
-    "indexes": IndexMeta[] | null;
+    "description"?: string;
+    "fields"?: FieldMeta[] | null;
+    "indexes"?: IndexColumn[] | null;
 }
 
 export interface FieldMeta {
     "fieldName": string;
     "fieldType": string;
-    "fieldUsage": string;
-    "primaryKey": boolean;
-    "description": string;
+    "fieldUsage"?: string;
+    "primaryKey"?: boolean;
+    "description"?: string;
 }
 
-export interface IndexMeta {
-    "fieldName": string;
-    "indexType": string;
-    "metricType": string;
-    "params": { [_ in string]?: any } | null;
+export interface IndexColumn {
+    "fieldName"?: string;
+    "fieldType"?: string;
+    "indexType"?: string;
+    "dimension"?: number;
+    "metricType"?: string;
+    "indexedCount"?: number;
+    "params"?: { [_ in string]?: any } | null;
 }
 
 export interface QueryDocumentResponse {

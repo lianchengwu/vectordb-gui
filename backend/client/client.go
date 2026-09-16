@@ -36,7 +36,7 @@ func NewClient(rawURL, username, apiKey string, timeout time.Duration) *Client {
 	}
 }
 
-func (c *Client) doRequest(ctx context.Context, path string, reqBody, respBody interface{}) error {
+func (c *Client) doRequest(ctx context.Context, method, path string, reqBody, respBody interface{}) error {
 	var bodyReader io.Reader
 	if reqBody != nil {
 		data, err := json.Marshal(reqBody)
@@ -47,7 +47,7 @@ func (c *Client) doRequest(ctx context.Context, path string, reqBody, respBody i
 	}
 
 	fullURL := c.baseURL + path
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fullURL, bodyReader)
+	req, err := http.NewRequestWithContext(ctx, method, fullURL, bodyReader)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -55,6 +55,7 @@ func (c *Client) doRequest(ctx context.Context, path string, reqBody, respBody i
 	req.Header.Set("Content-Type", "application/json")
 	authHeader := fmt.Sprintf("Bearer account=%s&api_key=%s", c.username, c.apiKey)
 	req.Header.Set("Authorization", authHeader)
+	req.Header.Set("Sdk-Version", "tcvectordb-go-v1.9.1")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -88,20 +89,28 @@ func (c *Client) Ping(ctx context.Context) (bool, string, error) {
 	if err != nil {
 		return false, err.Error(), err
 	}
-	return true, fmt.Sprintf("Connected successfully. Found %d databases.", len(dbs)), nil
+	return true, fmt.Sprintf("连接成功，发现 %d 个数据库", len(dbs)), nil
 }
 
 func (c *Client) ListDatabases(ctx context.Context) ([]string, error) {
 	var resp ListDatabasesResponse
-	if err := c.doRequest(ctx, "/database/list", map[string]interface{}{}, &resp); err != nil {
-		return nil, err
+	// Official SDK uses GET /database/list
+	err := c.doRequest(ctx, http.MethodGet, "/database/list", nil, &resp)
+	if err != nil {
+		// Fallback to POST /database/list in case some gateways require POST
+		errPost := c.doRequest(ctx, http.MethodPost, "/database/list", map[string]interface{}{}, &resp)
+		if errPost != nil {
+			return nil, err
+		}
 	}
 	if resp.Code != 0 {
 		return nil, fmt.Errorf("api error (%d): %s", resp.Code, resp.Message)
 	}
 	result := make([]string, 0, len(resp.Databases))
 	for _, db := range resp.Databases {
-		result = append(result, db.Database)
+		if db.Name != "" {
+			result = append(result, db.Name)
+		}
 	}
 	return result, nil
 }
@@ -109,7 +118,7 @@ func (c *Client) ListDatabases(ctx context.Context) ([]string, error) {
 func (c *Client) ListCollections(ctx context.Context, database string) ([]string, error) {
 	req := ListCollectionsRequest{Database: database}
 	var resp ListCollectionsResponse
-	if err := c.doRequest(ctx, "/collection/list", req, &resp); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, "/collection/list", req, &resp); err != nil {
 		return nil, err
 	}
 	if resp.Code != 0 {
@@ -117,7 +126,9 @@ func (c *Client) ListCollections(ctx context.Context, database string) ([]string
 	}
 	result := make([]string, 0, len(resp.Collections))
 	for _, coll := range resp.Collections {
-		result = append(result, coll.Collection)
+		if coll.Collection != "" {
+			result = append(result, coll.Collection)
+		}
 	}
 	return result, nil
 }
@@ -125,33 +136,64 @@ func (c *Client) ListCollections(ctx context.Context, database string) ([]string
 func (c *Client) DescribeCollection(ctx context.Context, database, collection string) (*CollectionMeta, error) {
 	req := DescribeCollectionRequest{Database: database, Collection: collection}
 	var resp DescribeCollectionResponse
-	if err := c.doRequest(ctx, "/collection/describe", req, &resp); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, "/collection/describe", req, &resp); err != nil {
 		return nil, err
 	}
 	if resp.Code != 0 {
 		return nil, fmt.Errorf("api error (%d): %s", resp.Code, resp.Message)
 	}
-	return &resp.Collection, nil
+	meta := resp.Collection
+	if meta.Collection == "" {
+		meta.Collection = collection
+	}
+	if meta.Database == "" {
+		meta.Database = database
+	}
+
+	// In Tencent VectorDB, indexes often describe the fields (vector, filter, primaryKey).
+	// If fields list is empty, construct virtual field metas from indexes for better UI display.
+	if len(meta.Fields) == 0 && len(meta.Indexes) > 0 {
+		fieldMap := make(map[string]bool)
+		for _, idx := range meta.Indexes {
+			if idx.FieldName != "" && !fieldMap[idx.FieldName] {
+				fieldMap[idx.FieldName] = true
+				isPK := idx.IndexType == "primaryKey"
+				meta.Fields = append(meta.Fields, FieldMeta{
+					FieldName:  idx.FieldName,
+					FieldType:  idx.FieldType,
+					PrimaryKey: isPK,
+				})
+			}
+		}
+	}
+
+	return &meta, nil
 }
 
 func (c *Client) QueryDocuments(ctx context.Context, database, collection string, limit, offset int, filter string) (*QueryDocumentResponse, error) {
-	req := QueryDocumentRequest{
-		Database:   database,
-		Collection: collection,
-	}
 	if limit <= 0 {
 		limit = 20
 	}
-	req.Query.Limit = limit
-	req.Query.Offset = offset
-	req.Query.Filter = filter
+	req := QueryDocumentRequest{
+		Database:   database,
+		Collection: collection,
+		Query: &QueryCond{
+			RetrieveVector: true,
+			Filter:         filter,
+			Limit:          int64(limit),
+			Offset:         int64(offset),
+		},
+	}
 
 	var resp QueryDocumentResponse
-	if err := c.doRequest(ctx, "/document/query", req, &resp); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, "/document/query", req, &resp); err != nil {
 		return nil, err
 	}
 	if resp.Code != 0 {
 		return nil, fmt.Errorf("api error (%d): %s", resp.Code, resp.Message)
+	}
+	if resp.Count == 0 && len(resp.Documents) > 0 {
+		resp.Count = uint64(len(resp.Documents))
 	}
 	return &resp, nil
 }

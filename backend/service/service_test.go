@@ -19,20 +19,16 @@ func setupMockServer(t *testing.T) *httptest.Server {
 		case "/database/list":
 			resp := client.ListDatabasesResponse{
 				ResponseHeader: client.ResponseHeader{Code: 0, Message: "Success"},
-				Databases: []struct {
-					Database string `json:"database"`
-				}{
-					{Database: "db_test1"},
-					{Database: "db_test2"},
+				Databases: []client.DatabaseEntry{
+					{Name: "db_test1"},
+					{Name: "db_test2"},
 				},
 			}
 			_ = json.NewEncoder(w).Encode(resp)
 		case "/collection/list":
 			resp := client.ListCollectionsResponse{
 				ResponseHeader: client.ResponseHeader{Code: 0, Message: "Success"},
-				Collections: []struct {
-					Collection string `json:"collection"`
-				}{
+				Collections: []client.CollectionEntry{
 					{Collection: "coll_1"},
 					{Collection: "coll_2"},
 				},
@@ -51,7 +47,7 @@ func setupMockServer(t *testing.T) *httptest.Server {
 						{FieldName: "id", FieldType: "string", PrimaryKey: true},
 						{FieldName: "vector", FieldType: "vector", FieldUsage: "vector"},
 					},
-					Indexes: []client.IndexMeta{
+					Indexes: []client.IndexColumn{
 						{FieldName: "vector", IndexType: "HNSW", MetricType: "COSINE"},
 					},
 				},
@@ -269,10 +265,8 @@ func TestVectorDBService_ClientCachingAndInvalidation(t *testing.T) {
 			server2Hit = true
 			resp := client.ListDatabasesResponse{
 				ResponseHeader: client.ResponseHeader{Code: 0, Message: "Success"},
-				Databases: []struct {
-					Database string `json:"database"`
-				}{
-					{Database: "db_from_server2"},
+				Databases: []client.DatabaseEntry{
+					{Name: "db_from_server2"},
 				},
 			}
 			_ = json.NewEncoder(w).Encode(resp)
