@@ -76,3 +76,73 @@ func TestDefaultStorage(t *testing.T) {
 		t.Fatalf("expected non-nil default storage with filePath")
 	}
 }
+
+func TestStorageCorruptedFile(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "tcvectordb-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	filePath := filepath.Join(tempDir, "connections.json")
+	if err := os.WriteFile(filePath, []byte("{corrupted json"), 0600); err != nil {
+		t.Fatalf("failed to write corrupted file: %v", err)
+	}
+
+	store := NewStorageWithPath(filePath)
+	cfg := ConnectionConfig{
+		ID:   "conn-1",
+		Name: "Test",
+	}
+
+	// Save should return error if file is corrupted
+	if err := store.Save(cfg); err == nil {
+		t.Fatalf("expected error saving to corrupted storage, got nil")
+	}
+
+	// List should return error if file is corrupted
+	if _, err := store.List(); err == nil {
+		t.Fatalf("expected error listing corrupted storage, got nil")
+	}
+
+	// Delete should return error if file is corrupted
+	if err := store.Delete("conn-1"); err == nil {
+		t.Fatalf("expected error deleting from corrupted storage, got nil")
+	}
+}
+
+func TestStorageFilePermissions(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "tcvectordb-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	subDir := filepath.Join(tempDir, "subdir")
+	filePath := filepath.Join(subDir, "connections.json")
+	store := NewStorageWithPath(filePath)
+
+	cfg := ConnectionConfig{
+		ID:   "conn-1",
+		Name: "Test",
+	}
+	if err := store.Save(cfg); err != nil {
+		t.Fatalf("failed to save: %v", err)
+	}
+
+	info, err := os.Stat(filePath)
+	if err != nil {
+		t.Fatalf("failed to stat file: %v", err)
+	}
+	if perm := info.Mode().Perm(); perm != 0600 {
+		t.Fatalf("expected file permission 0600, got %o", perm)
+	}
+
+	dirInfo, err := os.Stat(subDir)
+	if err != nil {
+		t.Fatalf("failed to stat dir: %v", err)
+	}
+	if perm := dirInfo.Mode().Perm(); perm != 0700 {
+		t.Fatalf("expected dir permission 0700, got %o", perm)
+	}
+}

@@ -27,7 +27,7 @@ func DefaultStorage() *Storage {
 		home = "."
 	}
 	dir := filepath.Join(home, ".tcvectordb")
-	_ = os.MkdirAll(dir, 0755)
+	_ = os.MkdirAll(dir, 0700)
 	return &Storage{
 		filePath: filepath.Join(dir, "connections.json"),
 	}
@@ -43,24 +43,7 @@ func (s *Storage) List() ([]ConnectionConfig, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if _, err := os.Stat(s.filePath); os.IsNotExist(err) {
-		return []ConnectionConfig{}, nil
-	}
-
-	data, err := os.ReadFile(s.filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(data) == 0 {
-		return []ConnectionConfig{}, nil
-	}
-
-	var conns []ConnectionConfig
-	if err := json.Unmarshal(data, &conns); err != nil {
-		return nil, err
-	}
-	return conns, nil
+	return s.listUnlocked()
 }
 
 func (s *Storage) Save(config ConnectionConfig) error {
@@ -69,7 +52,7 @@ func (s *Storage) Save(config ConnectionConfig) error {
 
 	conns, err := s.listUnlocked()
 	if err != nil {
-		conns = []ConnectionConfig{}
+		return err
 	}
 
 	found := false
@@ -126,12 +109,12 @@ func (s *Storage) listUnlocked() ([]ConnectionConfig, error) {
 
 func (s *Storage) saveUnlocked(conns []ConnectionConfig) error {
 	dir := filepath.Dir(s.filePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(conns, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.filePath, data, 0644)
+	return os.WriteFile(s.filePath, data, 0600)
 }
