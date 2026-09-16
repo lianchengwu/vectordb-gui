@@ -22,7 +22,7 @@ func NewClient(rawURL, username, apiKey string, timeout time.Duration) *Client {
 	if timeout <= 0 {
 		timeout = 10 * time.Second
 	}
-	u := strings.TrimRight(rawURL, "/")
+	u := strings.TrimRight(strings.TrimSpace(rawURL), "/")
 	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
 		u = "http://" + u
 	}
