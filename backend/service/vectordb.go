@@ -71,15 +71,15 @@ func (s *VectorDBService) getClient(connID string) (*client.Client, error) {
 		return entry.client, nil
 	}
 
-	timeout := time.Duration(target.Timeout) * time.Second
-	if timeout <= 0 {
-		timeout = 10 * time.Second
-	}
 	username := target.Username
 	if username == "" {
 		username = "root"
 	}
-	newCli := client.NewClient(target.URL, username, target.APIKey, timeout)
+	clientTimeout := 60 * time.Second
+	if target.Timeout > 60 {
+		clientTimeout = time.Duration(target.Timeout) * time.Second
+	}
+	newCli := client.NewClient(target.URL, username, target.APIKey, clientTimeout)
 
 	s.mu.Lock()
 	s.clients[connID] = cachedClient{
