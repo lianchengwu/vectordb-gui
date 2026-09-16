@@ -1,22 +1,22 @@
 <template>
-  <div class="h-full flex flex-col text-slate-200 select-none text-xs">
+  <div class="h-full flex flex-col text-slate-800 dark:text-slate-200 select-none text-xs transition-colors duration-200">
     <!-- Toolbar: Filter bar & Pagination controls -->
-    <div class="p-3 border-b border-slate-800 bg-slate-950/40 flex flex-wrap items-center justify-between gap-3 shrink-0">
+    <div class="p-3 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/40 flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-sm dark:shadow-none">
       <!-- Filter Bar -->
       <div class="flex items-center gap-2 flex-1 min-w-[300px]">
         <div class="relative flex-1">
-          <Filter class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Filter class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             v-model="filterInput"
             @keydown.enter="onQuery"
             type="text"
             placeholder='过滤条件，例如: id in ("doc-1") 或 age > 18'
-            class="w-full pl-8 pr-8 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 transition font-mono"
+            class="w-full pl-8 pr-8 py-1.5 rounded-lg bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 dark:bg-slate-900 dark:border-slate-700 dark:text-white dark:placeholder-slate-500 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 transition font-mono shadow-inner"
           />
           <button
             v-if="filterInput"
             @click="onClearFilter"
-            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white"
             title="清空过滤条件"
           >
             <X class="w-3.5 h-3.5" />
@@ -36,22 +36,22 @@
         <button
           @click="fetchData"
           :disabled="loading"
-          class="p-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+          class="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition shadow-sm"
           title="刷新数据"
         >
-          <RefreshCw :class="['w-3.5 h-3.5', loading ? 'animate-spin text-blue-400' : '']" />
+          <RefreshCw :class="['w-3.5 h-3.5', loading ? 'animate-spin text-blue-500' : '']" />
         </button>
       </div>
 
       <!-- Pagination Bar -->
       <div class="flex items-center gap-3 shrink-0">
         <!-- Limit Selector -->
-        <div class="flex items-center gap-1.5 text-slate-400">
+        <div class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
           <span>每页</span>
           <select
             v-model.number="limit"
             @change="onLimitChange"
-            class="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-white text-xs font-mono focus:outline-none"
+            class="px-2 py-1 rounded bg-white border border-slate-300 text-slate-800 dark:bg-slate-800 dark:border-slate-700 dark:text-white text-xs font-mono focus:outline-none shadow-sm"
           >
             <option :value="10">10</option>
             <option :value="20">20</option>
@@ -66,20 +66,20 @@
           <button
             @click="prevPage"
             :disabled="offset === 0 || loading"
-            class="px-2 py-1 rounded border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+            class="px-2.5 py-1 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm"
           >
             <ChevronLeft class="w-3.5 h-3.5" /> 上一页
           </button>
 
-          <span class="px-2 py-1 text-slate-400 font-mono text-[11px]">
+          <span class="px-2 py-1 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
             {{ offset + 1 }} - {{ offset + documents.length }}
-            <span v-if="totalCount > 0" class="text-slate-500">/ {{ totalCount }}</span>
+            <span v-if="totalCount > 0" class="text-slate-400 dark:text-slate-500">/ {{ totalCount }}</span>
           </span>
 
           <button
             @click="nextPage"
             :disabled="documents.length < limit || loading"
-            class="px-2 py-1 rounded border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+            class="px-2.5 py-1 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1 shadow-sm"
           >
             下一页 <ChevronRight class="w-3.5 h-3.5" />
           </button>
@@ -88,66 +88,66 @@
     </div>
 
     <!-- Error Alert -->
-    <div v-if="error" class="m-4 p-3 rounded-lg bg-rose-950/40 border border-rose-800/60 text-rose-300 flex items-start gap-2 text-xs shrink-0">
-      <AlertCircle class="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+    <div v-if="error" class="m-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300 flex items-start gap-2 text-xs shrink-0 shadow-sm">
+      <AlertCircle class="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0 mt-0.5" />
       <div class="flex-1 break-all">
         <p class="font-medium">查询返回错误</p>
-        <p class="text-[11px] text-rose-300/80 mt-0.5">{{ error }}</p>
+        <p class="text-[11px] text-rose-600 dark:text-rose-300/80 mt-0.5">{{ error }}</p>
       </div>
     </div>
 
     <!-- Data Table Area -->
-    <div class="flex-1 overflow-auto bg-slate-900/50">
+    <div class="flex-1 overflow-auto bg-white dark:bg-slate-900/50">
       <!-- Loading Skeleton -->
-      <div v-if="loading && documents.length === 0" class="py-20 text-center text-slate-500 flex flex-col items-center gap-3">
+      <div v-if="loading && documents.length === 0" class="py-20 text-center text-slate-400 dark:text-slate-500 flex flex-col items-center gap-3">
         <Loader2 class="w-6 h-6 animate-spin text-blue-500" />
         <p>正在读取集合文档数据...</p>
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="!loading && documents.length === 0" class="py-20 text-center text-slate-500">
-        <FileQuestion class="w-10 h-10 mx-auto mb-2 text-slate-600 opacity-50" />
-        <p class="text-sm">暂无匹配文档数据</p>
-        <p v-if="activeFilter" class="text-[11px] text-slate-600 mt-1">尝试修改或清空过滤条件</p>
+      <div v-else-if="!loading && documents.length === 0" class="py-20 text-center text-slate-400 dark:text-slate-500">
+        <FileQuestion class="w-10 h-10 mx-auto mb-2 text-slate-300 dark:text-slate-600 opacity-60" />
+        <p class="text-sm font-medium">暂无匹配文档数据</p>
+        <p v-if="activeFilter" class="text-[11px] text-slate-500 dark:text-slate-600 mt-1">尝试修改或清空过滤条件</p>
       </div>
 
       <!-- Table -->
       <table v-else class="w-full border-collapse text-left text-xs font-mono">
-        <thead class="bg-slate-950/90 sticky top-0 z-10 border-b border-slate-800 shadow-sm text-slate-400">
+        <thead class="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 text-slate-600 dark:bg-slate-950/90 dark:border-slate-800 dark:text-slate-400 shadow-sm">
           <tr>
-            <th class="px-3 py-2.5 w-12 text-center font-medium border-r border-slate-800/60">#</th>
+            <th class="px-3 py-2.5 w-12 text-center font-medium border-r border-slate-200/80 dark:border-slate-800/60">#</th>
             <th
               v-for="col in displayColumns"
               :key="col"
-              class="px-3 py-2.5 font-medium whitespace-nowrap border-r border-slate-800/60 text-slate-300"
+              class="px-3 py-2.5 font-medium whitespace-nowrap border-r border-slate-200/80 dark:border-slate-800/60 text-slate-700 dark:text-slate-300"
             >
               <div class="flex items-center gap-1.5">
-                <span :class="isPrimaryKey(col) ? 'text-amber-300 font-bold' : ''">{{ col }}</span>
+                <span :class="isPrimaryKey(col) ? 'text-amber-700 dark:text-amber-300 font-bold' : ''">{{ col }}</span>
                 <span
                   v-if="isPrimaryKey(col)"
-                  class="px-1 py-0.2 rounded text-[9px] bg-amber-950/80 border border-amber-700/60 text-amber-300 font-sans"
+                  class="px-1 py-0.2 rounded text-[9px] bg-amber-50 border border-amber-300 text-amber-700 dark:bg-amber-950/80 dark:border-amber-700/60 dark:text-amber-300 font-sans"
                 >
                   PK
                 </span>
                 <span
                   v-else-if="isVectorField(col)"
-                  class="px-1 py-0.2 rounded text-[9px] bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 font-sans"
+                  class="px-1 py-0.2 rounded text-[9px] bg-indigo-50 border border-indigo-200 text-indigo-700 dark:bg-indigo-950/80 dark:border-indigo-700/60 dark:text-indigo-300 font-sans"
                 >
                   VECTOR
                 </span>
               </div>
             </th>
-            <th class="px-3 py-2.5 w-20 text-center font-medium text-slate-400">操作</th>
+            <th class="px-3 py-2.5 w-20 text-center font-medium text-slate-500 dark:text-slate-400">操作</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-800/60">
+        <tbody class="divide-y divide-slate-200/70 dark:divide-slate-800/60">
           <tr
             v-for="(doc, rowIdx) in documents"
             :key="rowIdx"
-            class="hover:bg-slate-800/50 transition group"
+            class="hover:bg-blue-50/40 dark:hover:bg-slate-800/50 transition group"
           >
             <!-- Row index -->
-            <td class="px-3 py-2 text-center text-slate-500 border-r border-slate-800/40 text-[11px]">
+            <td class="px-3 py-2 text-center text-slate-400 dark:text-slate-500 border-r border-slate-200/60 dark:border-slate-800/40 text-[11px]">
               {{ offset + rowIdx + 1 }}
             </td>
 
@@ -155,22 +155,22 @@
             <td
               v-for="col in displayColumns"
               :key="col"
-              class="px-3 py-2 border-r border-slate-800/40 max-w-[280px] truncate"
+              class="px-3 py-2 border-r border-slate-200/60 dark:border-slate-800/40 max-w-[280px] truncate"
             >
               <!-- Vector column cell with badge -->
               <div v-if="isVectorValue(doc[col])" class="flex items-center gap-1.5">
                 <button
                   @click="openDetail(doc)"
-                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-950/70 border border-indigo-700/60 text-indigo-300 hover:bg-indigo-900/80 transition text-[11px]"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:border-indigo-700/60 dark:text-indigo-300 dark:hover:bg-indigo-900/80 transition text-[11px]"
                   title="点击查看高维向量详情"
                 >
-                  <Sparkles class="w-3 h-3 text-indigo-400" />
+                  <Sparkles class="w-3 h-3 text-indigo-500 dark:text-indigo-400" />
                   <span>{{ formatVectorSummary(doc[col]) }}</span>
                 </button>
               </div>
 
               <!-- Plain scalar/object values -->
-              <span v-else :class="isPrimaryKey(col) ? 'text-amber-200 font-semibold' : 'text-slate-300'" :title="String(doc[col] ?? '')">
+              <span v-else :class="isPrimaryKey(col) ? 'text-amber-800 dark:text-amber-200 font-semibold' : 'text-slate-800 dark:text-slate-300'" :title="String(doc[col] ?? '')">
                 {{ formatScalarValue(doc[col]) }}
               </span>
             </td>
@@ -179,7 +179,7 @@
             <td class="px-3 py-2 text-center">
               <button
                 @click="openDetail(doc)"
-                class="px-2 py-1 rounded bg-slate-800 hover:bg-blue-600 hover:text-white text-slate-400 transition text-[11px] inline-flex items-center gap-1 shadow-sm"
+                class="px-2 py-1 rounded bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-600 dark:bg-slate-800 dark:hover:bg-blue-600 dark:hover:text-white dark:text-slate-400 transition text-[11px] inline-flex items-center gap-1 shadow-sm"
                 title="查看完整文档 JSON"
               >
                 <Eye class="w-3 h-3" />
@@ -242,14 +242,12 @@ const selectedDoc = ref<Record<string, unknown> | null>(null);
 const displayColumns = computed(() => {
   const set = new Set<string>();
 
-  // If schema fields exist, list them first in schema order
   if (props.collectionMeta?.fields) {
     for (const f of props.collectionMeta.fields) {
       set.add(f.fieldName);
     }
   }
 
-  // Then add any additional keys from returned documents
   for (const doc of documents.value) {
     if (doc && typeof doc === "object") {
       for (const k of Object.keys(doc)) {
@@ -311,7 +309,7 @@ async function fetchData() {
     });
 
     if (res) {
-      totalCount.value = res.count || 0;
+      totalCount.value = Number(res.count) || 0;
       const docs: Record<string, unknown>[] = [];
       if (res.documents) {
         for (const item of res.documents) {

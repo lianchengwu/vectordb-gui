@@ -1,15 +1,15 @@
 <template>
-  <main class="flex-1 h-full flex flex-col bg-slate-950 overflow-hidden text-slate-100 select-none">
+  <main class="flex-1 h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden text-slate-800 dark:text-slate-100 select-none transition-colors duration-200">
     <!-- Empty / No Collection Selected State -->
     <div
       v-if="!collection"
       class="flex-1 flex flex-col items-center justify-center p-8 text-center"
     >
-      <div class="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 mb-4 shadow-xl">
-        <DatabaseZap class="w-8 h-8 text-blue-500/60" />
+      <div class="w-16 h-16 rounded-2xl bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-600 mb-4 shadow-md dark:shadow-xl">
+        <DatabaseZap class="w-8 h-8 text-blue-500/70" />
       </div>
-      <h2 class="text-base font-semibold text-white tracking-tight">Tencent Cloud VectorDB Client</h2>
-      <p class="text-xs text-slate-400 mt-1.5 max-w-sm leading-relaxed">
+      <h2 class="text-base font-semibold text-slate-900 dark:text-white tracking-tight">Tencent Cloud VectorDB Client</h2>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1.5 max-w-sm leading-relaxed">
         请在左侧侧边栏选择目标 Database 与 Collection，即可浏览集合 Schema 结构与文档高维向量数据。
       </p>
     </div>
@@ -17,32 +17,32 @@
     <!-- Active Collection Workspace -->
     <template v-else>
       <!-- Top Navigation & Header -->
-      <header class="h-14 px-6 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between shrink-0">
+      <header class="h-14 px-6 border-b border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-900/60 flex items-center justify-between shrink-0 shadow-sm dark:shadow-none">
         <!-- Breadcrumb & Metadata badges -->
         <div class="flex items-center gap-3 min-w-0">
-          <div class="flex items-center gap-1.5 text-xs font-mono text-slate-400 truncate">
-            <span class="text-slate-300 font-medium">{{ database }}</span>
-            <span class="text-slate-600">/</span>
-            <span class="text-white font-bold text-sm tracking-tight font-sans">{{ collection }}</span>
+          <div class="flex items-center gap-1.5 text-xs font-mono text-slate-500 dark:text-slate-400 truncate">
+            <span class="text-slate-700 dark:text-slate-300 font-medium">{{ database }}</span>
+            <span class="text-slate-400 dark:text-slate-600">/</span>
+            <span class="text-slate-900 dark:text-white font-bold text-sm tracking-tight font-sans">{{ collection }}</span>
           </div>
 
           <!-- Quick badges -->
           <div v-if="collectionMeta" class="hidden sm:flex items-center gap-1.5 ml-2">
             <span
               v-if="vectorMetric"
-              class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-950/70 border border-emerald-700/60 text-emerald-300"
+              class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-950/70 dark:border-emerald-700/60 dark:text-emerald-300"
               title="向量索引度量方式"
             >
               {{ vectorMetric }}
             </span>
             <span
-              class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-slate-800 border border-slate-700 text-slate-400"
+              class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-slate-100 border border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
               title="分片数"
             >
               {{ collectionMeta.shardNum || 1 }} 分片
             </span>
             <span
-              class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-slate-800 border border-slate-700 text-slate-400"
+              class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-slate-100 border border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
               title="副本数"
             >
               {{ collectionMeta.replicaNum || 0 }} 副本
@@ -51,14 +51,14 @@
         </div>
 
         <!-- Tab Switcher -->
-        <div class="flex items-center bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/80 text-xs shrink-0">
+        <div class="flex items-center bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700/80 text-xs shrink-0">
           <button
             @click="activeTab = 'data'"
             :class="[
               'px-3.5 py-1 rounded-md font-medium transition flex items-center gap-1.5',
               activeTab === 'data'
                 ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white',
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white',
             ]"
           >
             <Table2 class="w-3.5 h-3.5" />
@@ -70,7 +70,7 @@
               'px-3.5 py-1 rounded-md font-medium transition flex items-center gap-1.5',
               activeTab === 'schema'
                 ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white',
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white',
             ]"
           >
             <Layers class="w-3.5 h-3.5" />
@@ -122,7 +122,6 @@ const vectorMetric = computed(() => {
   return vectorIndex?.metricType || null;
 });
 
-// Reset tab to data view when switching collections
 watch(
   () => [props.database, props.collection],
   () => {

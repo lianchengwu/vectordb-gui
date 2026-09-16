@@ -10,3 +10,14 @@ html, body, #app {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   user-select: none;
 }
+
+.wails-drag {
+  --wails-draggable: drag;
+  --wails-non-client-region: caption;
+  user-select: none;
+}
+
+.wails-no-drag {
+  --wails-draggable: no-drag;
+  --wails-non-client-region: none;
+}
