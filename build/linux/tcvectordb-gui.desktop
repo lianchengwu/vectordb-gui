@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=tcvectordb-gui
+Exec=tcvectordb-gui
+Icon=tcvectordb-gui
+Categories=Development;
+Terminal=false
+Keywords=wails
+Version=1.0
+StartupNotify=false

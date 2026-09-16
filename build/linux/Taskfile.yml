@@ -4,7 +4,7 @@ includes:
   common: ../Taskfile.yml
 
 vars:
-  # Signing configuration - edit these values for your project
+  EXTRA_TAGS: '{{.EXTRA_TAGS | default "gtk3"}}'
   # PGP_KEY: "path/to/signing-key.asc"
   # SIGN_ROLE: "builder"  # Options: origin, maint, archive, builder
   #
