@@ -13,13 +13,8 @@
       </Sidebar>
 
       <!-- Main Content Workspace -->
-      <MainView
-        :conn-id="activeConnectionId"
-        :database="activeDatabase"
-        :collection="activeCollection"
-        :db-type="activeDbType"
-        :collection-meta="activeCollectionMeta"
-      />
+      <!-- Main Content Workspace (Tabbed) -->
+      <MainView />
     </div>
     <!-- Global Connection Edit/Create Modal -->
     <ConnectionModal />
@@ -46,14 +41,7 @@ const vdbStore = useVectorDBStore();
 const themeStore = useThemeStore();
 
 const { activeConnectionId, loadConnections } = connStore;
-const {
-  activeDatabase,
-  activeCollection,
-  activeDbType,
-  activeCollectionMeta,
-  loadDatabases,
-  reset,
-} = vdbStore;
+const { loadDatabases, reset } = vdbStore;
 function onConnectionChanged(connId: string) {
   if (connId) {
     loadDatabases(connId);

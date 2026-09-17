@@ -24,6 +24,15 @@ export type {
   QueryDocumentResponse,
 };
 
+export interface CollectionTab {
+  id: string; // `${connId}:${database}:${collection}`
+  connId: string;
+  database: string;
+  collection: string;
+  dbType: string;
+  meta: CollectionMeta | null;
+}
+
 export interface TestResult {
   success: boolean;
   message: string;

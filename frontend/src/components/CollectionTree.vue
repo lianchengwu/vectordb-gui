@@ -131,7 +131,7 @@
               @click="onSelectColl(db.name, coll)"
               :class="[
                 'px-2 py-1.5 rounded-md flex items-center gap-2 cursor-pointer transition select-none group',
-                activeDatabase === db.name && activeCollection === coll
+                activeTab && activeTab.database === db.name && activeTab.collection === coll
                   ? 'bg-blue-50 text-blue-600 border border-blue-200 font-medium dark:bg-blue-600/20 dark:text-blue-300 dark:border-blue-500/30'
                   : 'hover:bg-slate-100 text-slate-600 hover:text-slate-900 dark:hover:bg-slate-800/60 dark:text-slate-400 dark:hover:text-slate-200',
               ]"
@@ -178,16 +178,14 @@ const {
   databases,
   collectionsByDb,
   expandedDbs,
-  activeDatabase,
-  activeCollection,
+  activeTab,
   loading,
   loadingCollections,
   error,
   loadDatabases,
   toggleDatabase,
-  selectCollection,
+  openCollectionTab,
 } = vdbStore;
-
 const { activeConnectionId } = connStore;
 
 const searchQuery = ref("");
@@ -217,7 +215,7 @@ function onToggleDb(dbName: string) {
 
 function onSelectColl(dbName: string, coll: string) {
   if (activeConnectionId.value) {
-    selectCollection(activeConnectionId.value, dbName, coll);
+    openCollectionTab(activeConnectionId.value, dbName, coll);
   }
 }
 

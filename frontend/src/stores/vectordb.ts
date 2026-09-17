@@ -1,5 +1,5 @@
-import { ref } from "vue";
-import type { CollectionMeta, DatabaseDetail } from "../types";
+import { ref, computed } from "vue";
+import type { CollectionMeta, DatabaseDetail, CollectionTab } from "../types";
 import {
   ListDatabasesDetailed,
   ListCollections,
@@ -9,16 +9,20 @@ import {
 const databases = ref<DatabaseDetail[]>([]);
 const collectionsByDb = ref<Record<string, string[]>>({});
 const expandedDbs = ref<Record<string, boolean>>({});
-const activeDatabase = ref<string>("");
-const activeCollection = ref<string>("");
-const activeDbType = ref<string>("base");
-const activeCollectionMeta = ref<CollectionMeta | null>(null);
+
+// Multi-Tab Collection Workspace state
+const openTabs = ref<CollectionTab[]>([]);
+const activeTabId = ref<string>("");
+
 const loading = ref(false);
 const loadingCollections = ref<Record<string, boolean>>({});
-const loadingMeta = ref(false);
 const error = ref<string>("");
 
 export function useVectorDBStore() {
+  const activeTab = computed(() => {
+    return openTabs.value.find((t) => t.id === activeTabId.value) || null;
+  });
+
   async function loadDatabases(connId: string) {
     if (!connId) {
       reset();
@@ -71,31 +75,78 @@ export function useVectorDBStore() {
     }
   }
 
-  async function selectCollection(connId: string, database: string, collection: string) {
-    activeDatabase.value = database;
-    activeCollection.value = collection;
+  // Open or switch to a collection tab
+  async function openCollectionTab(connId: string, database: string, collection: string) {
+    const tabId = `${connId}:${database}:${collection}`;
     const type = getDbType(database);
-    activeDbType.value = type;
-    loadingMeta.value = true;
+
+    const existing = openTabs.value.find((t) => t.id === tabId);
+    if (existing) {
+      activeTabId.value = tabId;
+      return;
+    }
+
+    const newTab: CollectionTab = {
+      id: tabId,
+      connId,
+      database,
+      collection,
+      dbType: type,
+      meta: null,
+    };
+
+    openTabs.value.push(newTab);
+    activeTabId.value = tabId;
+
+    // Asynchronously fetch schema metadata for this tab
     try {
       const meta = await DescribeCollection(connId, database, collection, type);
-      activeCollectionMeta.value = meta;
+      const target = openTabs.value.find((t) => t.id === tabId);
+      if (target) {
+        target.meta = meta;
+      }
     } catch (e: unknown) {
-      error.value = e instanceof Error ? e.message : String(e);
-      activeCollectionMeta.value = null;
-    } finally {
-      loadingMeta.value = false;
+      console.warn("Failed to describe collection in tab:", e);
     }
+  }
+
+  function setActiveTab(tabId: string) {
+    activeTabId.value = tabId;
+  }
+
+  function closeTab(tabId: string) {
+    const idx = openTabs.value.findIndex((t) => t.id === tabId);
+    if (idx === -1) return;
+
+    openTabs.value.splice(idx, 1);
+
+    // If closing the active tab, switch to the adjacent tab if any
+    if (activeTabId.value === tabId) {
+      if (openTabs.value.length === 0) {
+        activeTabId.value = "";
+      } else {
+        const nextIdx = idx < openTabs.value.length ? idx : openTabs.value.length - 1;
+        activeTabId.value = openTabs.value[nextIdx].id;
+      }
+    }
+  }
+
+  function closeOtherTabs(tabId: string) {
+    openTabs.value = openTabs.value.filter((t) => t.id === tabId);
+    activeTabId.value = tabId;
+  }
+
+  function closeAllTabs() {
+    openTabs.value = [];
+    activeTabId.value = "";
   }
 
   function reset() {
     databases.value = [];
     collectionsByDb.value = {};
     expandedDbs.value = {};
-    activeDatabase.value = "";
-    activeCollection.value = "";
-    activeDbType.value = "base";
-    activeCollectionMeta.value = null;
+    openTabs.value = [];
+    activeTabId.value = "";
     error.value = "";
   }
 
@@ -103,19 +154,21 @@ export function useVectorDBStore() {
     databases,
     collectionsByDb,
     expandedDbs,
-    activeDatabase,
-    activeCollection,
-    activeDbType,
-    activeCollectionMeta,
+    openTabs,
+    activeTabId,
+    activeTab,
     loading,
     loadingCollections,
-    loadingMeta,
     error,
     getDbType,
     loadDatabases,
     loadCollections,
     toggleDatabase,
-    selectCollection,
+    openCollectionTab,
+    setActiveTab,
+    closeTab,
+    closeOtherTabs,
+    closeAllTabs,
     reset,
   };
 }
