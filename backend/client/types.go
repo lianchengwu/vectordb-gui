@@ -34,10 +34,23 @@ func (d *DatabaseEntry) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type DatabaseInfo struct {
+	CreateTime string `json:"createTime,omitempty"`
+	DbType     string `json:"dbType,omitempty"` // "base" or "ai"
+	Count      int64  `json:"count,omitempty"`
+}
+
+type DatabaseDetail struct {
+	Name       string `json:"name"`
+	DbType     string `json:"dbType"` // "base" or "ai"
+	CreateTime string `json:"createTime,omitempty"`
+}
+
 type ListDatabasesResponse struct {
 	ResponseHeader
-	Databases     []DatabaseEntry `json:"databases"`
-	AffectedCount int             `json:"affectedCount,omitempty"`
+	Databases     []DatabaseEntry          `json:"databases"`
+	AffectedCount int                      `json:"affectedCount,omitempty"`
+	Info          map[string]*DatabaseInfo `json:"info,omitempty"`
 }
 
 type ListCollectionsRequest struct {
@@ -89,6 +102,55 @@ type ListCollectionsResponse struct {
 	Collections []CollectionEntry `json:"collections"`
 }
 
+// AI CollectionView (Knowledge Base) types
+type AICollectionViewListReq struct {
+	Database string `json:"database"`
+}
+
+type AICollectionViewItem struct {
+	Database       string `json:"database"`
+	CollectionView string `json:"collectionView"`
+	Description    string `json:"description,omitempty"`
+}
+
+type AICollectionViewListRes struct {
+	ResponseHeader
+	CollectionViews []*AICollectionViewItem `json:"collectionViews"`
+}
+
+type AICollectionViewDescribeReq struct {
+	Database       string `json:"database"`
+	CollectionView string `json:"collectionView"`
+}
+
+type AICollectionViewDescribeRes struct {
+	ResponseHeader
+	CollectionView *struct {
+		Database       string        `json:"database"`
+		CollectionView string        `json:"collectionView"`
+		Description    string        `json:"description,omitempty"`
+		Indexes        []IndexColumn `json:"indexes,omitempty"`
+		ReplicaNum     *uint32       `json:"replicaNum,omitempty"`
+		ShardNum       *uint32       `json:"shardNum,omitempty"`
+	} `json:"collectionView"`
+}
+
+type AIDocumentSetQueryReq struct {
+	Database       string `json:"database"`
+	CollectionView string `json:"collectionView"`
+	Query          struct {
+		Limit  int64  `json:"limit,omitempty"`
+		Offset int64  `json:"offset,omitempty"`
+		Filter string `json:"filter,omitempty"`
+	} `json:"query"`
+}
+
+type AIDocumentSetQueryRes struct {
+	ResponseHeader
+	Count        uint64                   `json:"count"`
+	DocumentSets []map[string]interface{} `json:"documentSets"`
+}
+
 type DescribeCollectionRequest struct {
 	Database   string `json:"database"`
 	Collection string `json:"collection"`
@@ -120,13 +182,14 @@ type IndexColumn struct {
 }
 
 type CollectionMeta struct {
-	Database    string        `json:"database"`
-	Collection  string        `json:"collection"`
-	ReplicaNum  uint32        `json:"replicaNum"`
-	ShardNum    uint32        `json:"shardNum"`
-	Description string        `json:"description,omitempty"`
-	Fields      []FieldMeta   `json:"fields,omitempty"`
-	Indexes     []IndexColumn `json:"indexes,omitempty"`
+	Database       string        `json:"database"`
+	Collection     string        `json:"collection"`
+	ReplicaNum     uint32        `json:"replicaNum"`
+	ShardNum       uint32        `json:"shardNum"`
+	Description    string        `json:"description,omitempty"`
+	Fields         []FieldMeta   `json:"fields,omitempty"`
+	Indexes        []IndexColumn `json:"indexes,omitempty"`
+	IsAICollection bool          `json:"isAiCollection,omitempty"`
 }
 
 type DescribeCollectionResponse struct {

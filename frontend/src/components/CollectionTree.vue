@@ -67,38 +67,50 @@
 
       <!-- Databases & Collections Tree -->
       <div v-else class="space-y-0.5">
-        <div v-for="db in filteredDatabases" :key="db" class="rounded-md">
+        <div v-for="db in filteredDatabases" :key="db.name" class="rounded-md">
           <!-- Database Node -->
           <div
-            @click="onToggleDb(db)"
+            @click="onToggleDb(db.name)"
             class="group px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800/70 flex items-center justify-between cursor-pointer transition select-none"
           >
             <div class="flex items-center gap-1.5 min-w-0">
               <ChevronRight
                 :class="[
                   'w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-150',
-                  expandedDbs[db] ? 'rotate-90 text-slate-700 dark:text-slate-300' : '',
+                  expandedDbs[db.name] ? 'rotate-90 text-slate-700 dark:text-slate-300' : '',
                 ]"
               />
-              <Database class="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0" />
-              <span class="font-medium text-slate-800 dark:text-slate-200 truncate" :title="db">{{ db }}</span>
+              <Database :class="['w-3.5 h-3.5 shrink-0', db.dbType === 'ai' ? 'text-purple-500 dark:text-purple-400' : 'text-blue-500 dark:text-blue-400']" />
+              <span class="font-medium text-slate-800 dark:text-slate-200 truncate" :title="db.name">{{ db.name }}</span>
+
+              <!-- DB Type Badge (Base vs AI) -->
+              <span
+                :class="[
+                  'px-1.5 py-0.2 rounded text-[9px] font-semibold tracking-wider shrink-0 font-mono',
+                  db.dbType === 'ai'
+                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                    : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                ]"
+              >
+                {{ db.dbType === 'ai' ? 'AI' : 'BASE' }}
+              </span>
             </div>
 
             <div class="flex items-center gap-1">
-              <Loader2 v-if="loadingCollections[db]" class="w-3 h-3 animate-spin text-slate-400 dark:text-slate-500" />
+              <Loader2 v-if="loadingCollections[db.name]" class="w-3 h-3 animate-spin text-slate-400 dark:text-slate-500" />
               <span
-                v-else-if="collectionsByDb[db]"
+                v-else-if="collectionsByDb[db.name]"
                 class="px-1.5 py-0.5 rounded-full bg-slate-200/80 text-[10px] text-slate-600 dark:bg-slate-800 dark:text-slate-400 font-mono"
               >
-                {{ collectionsByDb[db].length }}
+                {{ collectionsByDb[db.name].length }}
               </span>
             </div>
           </div>
 
           <!-- Collections (Children) -->
-          <div v-if="expandedDbs[db]" class="pl-4 pr-1 py-0.5 space-y-0.5 border-l border-slate-200 dark:border-slate-800/80 ml-3.5 my-0.5">
+          <div v-if="expandedDbs[db.name]" class="pl-4 pr-1 py-0.5 space-y-0.5 border-l border-slate-200 dark:border-slate-800/80 ml-3.5 my-0.5">
             <div
-              v-if="loadingCollections[db] && (!collectionsByDb[db] || collectionsByDb[db].length === 0)"
+              v-if="loadingCollections[db.name] && (!collectionsByDb[db.name] || collectionsByDb[db.name].length === 0)"
               class="py-2 px-2 text-[11px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5"
             >
               <Loader2 class="w-3 h-3 animate-spin text-blue-500 dark:text-blue-400" />
@@ -106,7 +118,7 @@
             </div>
 
             <div
-              v-else-if="!collectionsByDb[db] || collectionsByDb[db].length === 0"
+              v-else-if="!collectionsByDb[db.name] || collectionsByDb[db.name].length === 0"
               class="py-1.5 px-2 text-[11px] text-slate-400 dark:text-slate-500 italic"
             >
               暂无集合
@@ -114,22 +126,23 @@
 
             <div
               v-else
-              v-for="coll in getFilteredCollections(db)"
+              v-for="coll in getFilteredCollections(db.name)"
               :key="coll"
-              @click="onSelectColl(db, coll)"
+              @click="onSelectColl(db.name, coll)"
               :class="[
                 'px-2 py-1.5 rounded-md flex items-center gap-2 cursor-pointer transition select-none group',
-                activeDatabase === db && activeCollection === coll
+                activeDatabase === db.name && activeCollection === coll
                   ? 'bg-blue-50 text-blue-600 border border-blue-200 font-medium dark:bg-blue-600/20 dark:text-blue-300 dark:border-blue-500/30'
                   : 'hover:bg-slate-100 text-slate-600 hover:text-slate-900 dark:hover:bg-slate-800/60 dark:text-slate-400 dark:hover:text-slate-200',
               ]"
             >
-              <Table class="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400 shrink-0 group-hover:text-blue-500" />
+              <BookOpen v-if="db.dbType === 'ai'" class="w-3.5 h-3.5 text-purple-500 dark:text-purple-400 shrink-0 group-hover:text-purple-600" />
+              <Table v-else class="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400 shrink-0 group-hover:text-blue-500" />
               <span class="truncate" :title="coll">{{ coll }}</span>
             </div>
 
             <div
-              v-if="collectionsByDb[db] && collectionsByDb[db].length > 0 && getFilteredCollections(db).length === 0"
+              v-if="collectionsByDb[db.name] && collectionsByDb[db.name].length > 0 && getFilteredCollections(db.name).length === 0"
               class="py-1.5 px-2 text-[11px] text-slate-400 dark:text-slate-500 italic"
             >
               无匹配集合
@@ -150,6 +163,7 @@ import {
   Database,
   ChevronRight,
   Table,
+  BookOpen,
   FolderTree,
   AlertCircle,
   Loader2,
@@ -182,28 +196,28 @@ const filteredDatabases = computed(() => {
   if (!searchQuery.value.trim()) return databases.value;
   const q = searchQuery.value.toLowerCase();
   return databases.value.filter((db) => {
-    if (db.toLowerCase().includes(q)) return true;
-    const colls = collectionsByDb.value[db] || [];
+    if (db.name.toLowerCase().includes(q)) return true;
+    const colls = collectionsByDb.value[db.name] || [];
     return colls.some((c) => c.toLowerCase().includes(q));
   });
 });
 
-function getFilteredCollections(db: string): string[] {
-  const colls = collectionsByDb.value[db] || [];
+function getFilteredCollections(dbName: string): string[] {
+  const colls = collectionsByDb.value[dbName] || [];
   if (!searchQuery.value.trim()) return colls;
   const q = searchQuery.value.toLowerCase();
   return colls.filter((c) => c.toLowerCase().includes(q));
 }
 
-function onToggleDb(db: string) {
+function onToggleDb(dbName: string) {
   if (activeConnectionId.value) {
-    toggleDatabase(activeConnectionId.value, db);
+    toggleDatabase(activeConnectionId.value, dbName);
   }
 }
 
-function onSelectColl(db: string, coll: string) {
+function onSelectColl(dbName: string, coll: string) {
   if (activeConnectionId.value) {
-    selectCollection(activeConnectionId.value, db, coll);
+    selectCollection(activeConnectionId.value, dbName, coll);
   }
 }
 

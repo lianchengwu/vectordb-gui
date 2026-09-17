@@ -3,6 +3,7 @@
 
 export type {
     CollectionMeta,
+    DatabaseDetail,
     FieldMeta,
     IndexColumn,
     QueryDocumentResponse

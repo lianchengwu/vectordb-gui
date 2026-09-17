@@ -87,8 +87,39 @@
       </div>
     </div>
 
-    <!-- Error Alert -->
-    <div v-if="error" class="m-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300 flex items-start gap-2 text-xs shrink-0 shadow-sm">
+    <!-- AI Privilege Restriction Guidance Card (Error 11100) -->
+    <div
+      v-if="error && isAIPrivilegeError"
+      class="m-4 p-4 rounded-xl bg-purple-50 border border-purple-200 dark:bg-purple-950/40 dark:border-purple-800/60 text-purple-900 dark:text-purple-200 text-xs shrink-0 shadow-sm"
+    >
+      <div class="flex items-start gap-3">
+        <ShieldAlert class="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
+        <div class="flex-1 space-y-2">
+          <div>
+            <p class="font-bold text-sm text-purple-950 dark:text-purple-100">AI 知识库数据权限受限 (Code 11100)</p>
+            <p class="text-[11px] text-purple-700 dark:text-purple-300 mt-1 leading-relaxed">
+              当前集合属于<b>腾讯云 AI 套件知识库体系</b>。由于当前 API Key 凭据受限于腾讯云 CAM 的 <code>Base 基础数据</code> 权限策略，无法直接读取该 AI 集合的文件切片。
+            </p>
+          </div>
+          <div class="flex items-center gap-2 pt-1 flex-wrap">
+            <button
+              type="button"
+              @click="openCamConsole"
+              class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium transition flex items-center gap-1.5 shadow-sm"
+            >
+              <ExternalLink class="w-3.5 h-3.5" />
+              前往腾讯云 CAM 配置 AI 权限
+            </button>
+            <span class="text-purple-600/80 dark:text-purple-400 text-[11px]">
+              或在左侧侧边栏切换至标注为 <b>BASE</b> 的基础型数据库
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Standard Error Alert -->
+    <div v-else-if="error" class="m-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800/60 dark:text-rose-300 flex items-start gap-2 text-xs shrink-0 shadow-sm">
       <AlertCircle class="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0 mt-0.5" />
       <div class="flex-1 break-all">
         <p class="font-medium">查询返回错误</p>
@@ -214,7 +245,10 @@ import {
   Eye,
   Loader2,
   Sparkles,
+  ShieldAlert,
+  ExternalLink,
 } from "lucide-vue-next";
+import { Browser } from "@wailsio/runtime";
 import { QueryDocuments } from "../../bindings/vectordb-1/backend/service/vectordbservice";
 import type { CollectionMeta } from "../types";
 import JsonDetailModal from "./JsonDetailModal.vue";
@@ -223,6 +257,7 @@ const props = defineProps<{
   connId: string;
   database: string;
   collection: string;
+  dbType?: string;
   collectionMeta: CollectionMeta | null;
 }>();
 
@@ -238,6 +273,23 @@ const error = ref("");
 const detailModalOpen = ref(false);
 const selectedDoc = ref<Record<string, unknown> | null>(null);
 
+
+const isAIPrivilegeError = computed(() => {
+  return (
+    error.value.includes("11100") ||
+    error.value.includes("user can only handle base data") ||
+    error.value.includes("AI 知识库")
+  );
+});
+
+function openCamConsole() {
+  const url = "https://console.cloud.tencent.com/cam";
+  try {
+    Browser.OpenURL(url);
+  } catch {
+    window.open(url, "_blank");
+  }
+}
 // Dynamic column list derived from schema fields or returned documents
 const displayColumns = computed(() => {
   const set = new Set<string>();
@@ -303,6 +355,7 @@ async function fetchData() {
       connectionId: props.connId,
       database: props.database,
       collection: props.collection,
+      dbType: props.dbType || "base",
       limit: limit.value,
       offset: offset.value,
       filter: activeFilter.value,

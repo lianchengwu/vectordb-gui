@@ -6,6 +6,7 @@ import type {
 } from "../../bindings/vectordb-1/backend/storage/models";
 import type {
   CollectionMeta,
+  DatabaseDetail,
   FieldMeta,
   IndexColumn,
   QueryDocumentResponse,
@@ -17,6 +18,7 @@ export type {
   ProxyConfig,
   SSHTunnelConfig,
   CollectionMeta,
+  DatabaseDetail,
   FieldMeta,
   IndexColumn,
   QueryDocumentResponse,

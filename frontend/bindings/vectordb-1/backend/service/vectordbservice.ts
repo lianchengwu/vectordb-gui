@@ -13,8 +13,8 @@ import * as client$0 from "../client/models.js";
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
-export function DescribeCollection(connID: string, database: string, collection: string): $CancellablePromise<client$0.CollectionMeta | null> {
-    return $Call.ByID(3631453886, connID, database, collection);
+export function DescribeCollection(connID: string, database: string, collection: string, dbType: string): $CancellablePromise<client$0.CollectionMeta | null> {
+    return $Call.ByID(3631453886, connID, database, collection, dbType);
 }
 
 /**
@@ -25,12 +25,16 @@ export function InvalidateCache(connID: string): $CancellablePromise<void> {
     return $Call.ByID(1434046908, connID);
 }
 
-export function ListCollections(connID: string, database: string): $CancellablePromise<string[] | null> {
-    return $Call.ByID(3927618840, connID, database);
+export function ListCollections(connID: string, database: string, dbType: string): $CancellablePromise<string[] | null> {
+    return $Call.ByID(3927618840, connID, database, dbType);
 }
 
 export function ListDatabases(connID: string): $CancellablePromise<string[] | null> {
     return $Call.ByID(488518623, connID);
+}
+
+export function ListDatabasesDetailed(connID: string): $CancellablePromise<client$0.DatabaseDetail[] | null> {
+    return $Call.ByID(101094943, connID);
 }
 
 export function QueryDocuments(params: $models.QueryDocumentsParams): $CancellablePromise<client$0.QueryDocumentResponse | null> {

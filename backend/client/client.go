@@ -152,12 +152,10 @@ func (c *Client) Ping(ctx context.Context) (bool, string, error) {
 	return true, fmt.Sprintf("连接成功，发现 %d 个数据库", len(dbs)), nil
 }
 
-func (c *Client) ListDatabases(ctx context.Context) ([]string, error) {
+func (c *Client) ListDatabasesDetailed(ctx context.Context) ([]DatabaseDetail, error) {
 	var resp ListDatabasesResponse
-	// Official SDK uses GET /database/list
 	err := c.doRequest(ctx, http.MethodGet, "/database/list", nil, &resp)
 	if err != nil {
-		// Fallback to POST /database/list in case some gateways require POST
 		errPost := c.doRequest(ctx, http.MethodPost, "/database/list", map[string]interface{}{}, &resp)
 		if errPost != nil {
 			return nil, err
@@ -166,22 +164,72 @@ func (c *Client) ListDatabases(ctx context.Context) ([]string, error) {
 	if resp.Code != 0 {
 		return nil, fmt.Errorf("api error (%d): %s", resp.Code, resp.Message)
 	}
-	result := make([]string, 0, len(resp.Databases))
+
+	result := make([]DatabaseDetail, 0, len(resp.Databases))
 	for _, db := range resp.Databases {
-		if db.Name != "" {
-			result = append(result, db.Name)
+		if db.Name == "" {
+			continue
 		}
+		dbType := "base"
+		createTime := ""
+		if resp.Info != nil {
+			if info, ok := resp.Info[db.Name]; ok && info != nil {
+				if info.DbType != "" {
+					dbType = strings.ToLower(info.DbType)
+				}
+				createTime = info.CreateTime
+			}
+		}
+		result = append(result, DatabaseDetail{
+			Name:       db.Name,
+			DbType:     dbType,
+			CreateTime: createTime,
+		})
 	}
 	return result, nil
 }
 
-func (c *Client) ListCollections(ctx context.Context, database string) ([]string, error) {
+func (c *Client) ListDatabases(ctx context.Context) ([]string, error) {
+	details, err := c.ListDatabasesDetailed(ctx)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(details))
+	for _, d := range details {
+		names = append(names, d.Name)
+	}
+	return names, nil
+}
+
+func (c *Client) ListCollections(ctx context.Context, database, dbType string) ([]string, error) {
+	// 1. If identified as AI database, query AI collection view list first
+	if strings.ToLower(dbType) == "ai" {
+		req := AICollectionViewListReq{Database: database}
+		var resp AICollectionViewListRes
+		if err := c.doRequest(ctx, http.MethodPost, "/ai/collectionView/list", req, &resp); err == nil && resp.Code == 0 {
+			result := make([]string, 0, len(resp.CollectionViews))
+			for _, cv := range resp.CollectionViews {
+				if cv != nil && cv.CollectionView != "" {
+					result = append(result, cv.CollectionView)
+				}
+			}
+			return result, nil
+		}
+	}
+
+	// 2. Base collection listing
 	req := ListCollectionsRequest{Database: database}
 	var resp ListCollectionsResponse
 	if err := c.doRequest(ctx, http.MethodPost, "/collection/list", req, &resp); err != nil {
+		if strings.Contains(err.Error(), "11100") || strings.Contains(err.Error(), "user can only handle base data") {
+			return nil, fmt.Errorf("数据库 '%s' 为 AI 知识库类型，当前连接凭证受限于 Base 基础数据权限。如需访问，请在腾讯云 CAM 开通 AI 权限", database)
+		}
 		return nil, err
 	}
 	if resp.Code != 0 {
+		if resp.Code == 11100 {
+			return nil, fmt.Errorf("数据库 '%s' 为 AI 知识库类型，当前凭证受限于 Base 基础数据权限", database)
+		}
 		return nil, fmt.Errorf("api error (%d): %s", resp.Code, resp.Message)
 	}
 	result := make([]string, 0, len(resp.Collections))
@@ -193,10 +241,48 @@ func (c *Client) ListCollections(ctx context.Context, database string) ([]string
 	return result, nil
 }
 
-func (c *Client) DescribeCollection(ctx context.Context, database, collection string) (*CollectionMeta, error) {
+func (c *Client) DescribeCollection(ctx context.Context, database, collection, dbType string) (*CollectionMeta, error) {
+	// 1. If AI database, try describing via AI CollectionView API
+	if strings.ToLower(dbType) == "ai" {
+		req := AICollectionViewDescribeReq{Database: database, CollectionView: collection}
+		var resp AICollectionViewDescribeRes
+		if err := c.doRequest(ctx, http.MethodPost, "/ai/collectionView/describe", req, &resp); err == nil && resp.Code == 0 && resp.CollectionView != nil {
+			cv := resp.CollectionView
+			meta := CollectionMeta{
+				Database:       database,
+				Collection:     collection,
+				Description:    cv.Description,
+				Indexes:        cv.Indexes,
+				IsAICollection: true,
+			}
+			if cv.ReplicaNum != nil {
+				meta.ReplicaNum = *cv.ReplicaNum
+			}
+			if cv.ShardNum != nil {
+				meta.ShardNum = *cv.ShardNum
+			}
+			if len(meta.Indexes) > 0 {
+				for _, idx := range meta.Indexes {
+					if idx.FieldName != "" {
+						meta.Fields = append(meta.Fields, FieldMeta{
+							FieldName:  idx.FieldName,
+							FieldType:  idx.FieldType,
+							FieldUsage: idx.IndexType,
+						})
+					}
+				}
+			}
+			return &meta, nil
+		}
+	}
+
+	// 2. Base collection describe
 	req := DescribeCollectionRequest{Database: database, Collection: collection}
 	var resp DescribeCollectionResponse
 	if err := c.doRequest(ctx, http.MethodPost, "/collection/describe", req, &resp); err != nil {
+		if strings.Contains(err.Error(), "11100") || strings.Contains(err.Error(), "user can only handle base data") {
+			return nil, fmt.Errorf("集合 '%s' 属于 AI 知识库类型，当前账号凭证受限于 Base 基础数据权限", collection)
+		}
 		return nil, err
 	}
 	if resp.Code != 0 {
@@ -210,8 +296,6 @@ func (c *Client) DescribeCollection(ctx context.Context, database, collection st
 		meta.Database = database
 	}
 
-	// In Tencent VectorDB, indexes often describe the fields (vector, filter, primaryKey).
-	// If fields list is empty, construct virtual field metas from indexes for better UI display.
 	if len(meta.Fields) == 0 && len(meta.Indexes) > 0 {
 		fieldMap := make(map[string]bool)
 		for _, idx := range meta.Indexes {
@@ -230,10 +314,35 @@ func (c *Client) DescribeCollection(ctx context.Context, database, collection st
 	return &meta, nil
 }
 
-func (c *Client) QueryDocuments(ctx context.Context, database, collection string, limit, offset int, filter string) (*QueryDocumentResponse, error) {
+func (c *Client) QueryDocuments(ctx context.Context, database, collection, dbType string, limit, offset int, filter string) (*QueryDocumentResponse, error) {
 	if limit <= 0 {
 		limit = 20
 	}
+
+	// 1. If AI database, try querying via AI DocumentSet API
+	if strings.ToLower(dbType) == "ai" {
+		req := AIDocumentSetQueryReq{
+			Database:       database,
+			CollectionView: collection,
+		}
+		req.Query.Limit = int64(limit)
+		req.Query.Offset = int64(offset)
+		req.Query.Filter = filter
+		var resp AIDocumentSetQueryRes
+		if err := c.doRequest(ctx, http.MethodPost, "/ai/documentSet/query", req, &resp); err == nil && resp.Code == 0 {
+			count := resp.Count
+			if count == 0 && len(resp.DocumentSets) > 0 {
+				count = uint64(len(resp.DocumentSets))
+			}
+			return &QueryDocumentResponse{
+				ResponseHeader: resp.ResponseHeader,
+				Count:          count,
+				Documents:      resp.DocumentSets,
+			}, nil
+		}
+	}
+
+	// 2. Base document query
 	req := QueryDocumentRequest{
 		Database:   database,
 		Collection: collection,
@@ -247,6 +356,9 @@ func (c *Client) QueryDocuments(ctx context.Context, database, collection string
 
 	var resp QueryDocumentResponse
 	if err := c.doRequest(ctx, http.MethodPost, "/document/query", req, &resp); err != nil {
+		if strings.Contains(err.Error(), "11100") || strings.Contains(err.Error(), "user can only handle base data") {
+			return nil, fmt.Errorf("集合 '%s' 属于 AI 知识库体系，当前账号受限于 Base 基础数据权限。如需查询文件切片，请在腾讯云开通 AI CAM 权限", collection)
+		}
 		return nil, err
 	}
 	if resp.Code != 0 {

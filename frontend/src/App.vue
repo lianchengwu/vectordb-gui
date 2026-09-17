@@ -17,10 +17,10 @@
         :conn-id="activeConnectionId"
         :database="activeDatabase"
         :collection="activeCollection"
+        :db-type="activeDbType"
         :collection-meta="activeCollectionMeta"
       />
     </div>
-
     <!-- Global Connection Edit/Create Modal -->
     <ConnectionModal />
 
@@ -49,11 +49,11 @@ const { activeConnectionId, loadConnections } = connStore;
 const {
   activeDatabase,
   activeCollection,
+  activeDbType,
   activeCollectionMeta,
   loadDatabases,
   reset,
 } = vdbStore;
-
 function onConnectionChanged(connId: string) {
   if (connId) {
     loadDatabases(connId);

@@ -9,6 +9,17 @@ export interface CollectionMeta {
     "description"?: string;
     "fields"?: FieldMeta[] | null;
     "indexes"?: IndexColumn[] | null;
+    "isAiCollection"?: boolean;
+}
+
+export interface DatabaseDetail {
+    "name": string;
+
+    /**
+     * "base" or "ai"
+     */
+    "dbType": string;
+    "createTime"?: string;
 }
 
 export interface FieldMeta {

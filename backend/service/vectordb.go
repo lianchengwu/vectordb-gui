@@ -112,6 +112,17 @@ func (s *VectorDBService) getTimeout(connID string, defaultDuration time.Duratio
 	return defaultDuration
 }
 
+func (s *VectorDBService) ListDatabasesDetailed(connID string) ([]client.DatabaseDetail, error) {
+	cli, err := s.getClient(connID)
+	if err != nil {
+		return nil, err
+	}
+	timeout := s.getTimeout(connID, 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return cli.ListDatabasesDetailed(ctx)
+}
+
 func (s *VectorDBService) ListDatabases(connID string) ([]string, error) {
 	cli, err := s.getClient(connID)
 	if err != nil {
@@ -123,7 +134,7 @@ func (s *VectorDBService) ListDatabases(connID string) ([]string, error) {
 	return cli.ListDatabases(ctx)
 }
 
-func (s *VectorDBService) ListCollections(connID, database string) ([]string, error) {
+func (s *VectorDBService) ListCollections(connID, database, dbType string) ([]string, error) {
 	cli, err := s.getClient(connID)
 	if err != nil {
 		return nil, err
@@ -131,10 +142,10 @@ func (s *VectorDBService) ListCollections(connID, database string) ([]string, er
 	timeout := s.getTimeout(connID, 15*time.Second)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	return cli.ListCollections(ctx, database)
+	return cli.ListCollections(ctx, database, dbType)
 }
 
-func (s *VectorDBService) DescribeCollection(connID, database, collection string) (*client.CollectionMeta, error) {
+func (s *VectorDBService) DescribeCollection(connID, database, collection, dbType string) (*client.CollectionMeta, error) {
 	cli, err := s.getClient(connID)
 	if err != nil {
 		return nil, err
@@ -142,13 +153,14 @@ func (s *VectorDBService) DescribeCollection(connID, database, collection string
 	timeout := s.getTimeout(connID, 15*time.Second)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	return cli.DescribeCollection(ctx, database, collection)
+	return cli.DescribeCollection(ctx, database, collection, dbType)
 }
 
 type QueryDocumentsParams struct {
 	ConnectionID string `json:"connectionId"`
 	Database     string `json:"database"`
 	Collection   string `json:"collection"`
+	DbType       string `json:"dbType,omitempty"`
 	Limit        int    `json:"limit"`
 	Offset       int    `json:"offset"`
 	Filter       string `json:"filter"`
@@ -162,5 +174,5 @@ func (s *VectorDBService) QueryDocuments(params QueryDocumentsParams) (*client.Q
 	timeout := s.getTimeout(params.ConnectionID, 30*time.Second)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	return cli.QueryDocuments(ctx, params.Database, params.Collection, params.Limit, params.Offset, params.Filter)
+	return cli.QueryDocuments(ctx, params.Database, params.Collection, params.DbType, params.Limit, params.Offset, params.Filter)
 }

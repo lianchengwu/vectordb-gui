@@ -5,6 +5,7 @@ export interface QueryDocumentsParams {
     "connectionId": string;
     "database": string;
     "collection": string;
+    "dbType"?: string;
     "limit": number;
     "offset": number;
     "filter": string;

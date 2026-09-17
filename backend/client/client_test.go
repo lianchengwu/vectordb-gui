@@ -111,7 +111,7 @@ func TestVectorDBClient(t *testing.T) {
 	}
 
 	// Test ListCollections
-	colls, err := cli.ListCollections(context.Background(), "db_test")
+	colls, err := cli.ListCollections(context.Background(), "db_test", "base")
 	if err != nil {
 		t.Fatalf("ListCollections failed: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestVectorDBClient(t *testing.T) {
 	}
 
 	// Test DescribeCollection (with auto-derived fields from indexes)
-	meta, err := cli.DescribeCollection(context.Background(), "db_test", "coll_articles")
+	meta, err := cli.DescribeCollection(context.Background(), "db_test", "coll_articles", "base")
 	if err != nil {
 		t.Fatalf("DescribeCollection failed: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestVectorDBClient(t *testing.T) {
 	}
 
 	// Test QueryDocuments
-	qResp, err := cli.QueryDocuments(context.Background(), "db_test", "coll_articles", 10, 0, "")
+	qResp, err := cli.QueryDocuments(context.Background(), "db_test", "coll_articles", "base", 10, 0, "")
 	if err != nil {
 		t.Fatalf("QueryDocuments failed: %v", err)
 	}

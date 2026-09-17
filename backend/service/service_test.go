@@ -215,7 +215,7 @@ func TestVectorDBService_Operations(t *testing.T) {
 	}
 
 	// 2. ListCollections
-	colls, err := vdbSvc.ListCollections("test-conn", "db_test1")
+	colls, err := vdbSvc.ListCollections("test-conn", "db_test1", "base")
 	if err != nil {
 		t.Fatalf("ListCollections failed: %v", err)
 	}
@@ -224,7 +224,7 @@ func TestVectorDBService_Operations(t *testing.T) {
 	}
 
 	// 3. DescribeCollection
-	meta, err := vdbSvc.DescribeCollection("test-conn", "db_test1", "coll_1")
+	meta, err := vdbSvc.DescribeCollection("test-conn", "db_test1", "coll_1", "base")
 	if err != nil {
 		t.Fatalf("DescribeCollection failed: %v", err)
 	}
@@ -363,7 +363,7 @@ func TestVectorDBService_Concurrency(t *testing.T) {
 			if idx%3 == 0 {
 				_, _ = vdbSvc.ListDatabases("race-conn")
 			} else if idx%3 == 1 {
-				_, _ = vdbSvc.ListCollections("race-conn", "db_test1")
+				_, _ = vdbSvc.ListCollections("race-conn", "db_test1", "base")
 			} else {
 				vdbSvc.InvalidateCache("race-conn")
 			}

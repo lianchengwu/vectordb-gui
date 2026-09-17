@@ -27,26 +27,40 @@
           </div>
 
           <!-- Quick badges -->
-          <div v-if="collectionMeta" class="hidden sm:flex items-center gap-1.5 ml-2">
+          <div class="hidden sm:flex items-center gap-1.5 ml-2">
+            <!-- DB Type badge -->
             <span
-              v-if="vectorMetric"
-              class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-950/70 dark:border-emerald-700/60 dark:text-emerald-300"
-              title="向量索引度量方式"
+              :class="[
+                'px-2 py-0.5 rounded-full text-[10px] font-mono font-bold',
+                dbType === 'ai'
+                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                  : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+              ]"
             >
-              {{ vectorMetric }}
+              {{ dbType === 'ai' ? 'AI 知识库' : 'BASE 库' }}
             </span>
-            <span
-              class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-slate-100 border border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
-              title="分片数"
-            >
-              {{ collectionMeta.shardNum || 1 }} 分片
-            </span>
-            <span
-              class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-slate-100 border border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
-              title="副本数"
-            >
-              {{ collectionMeta.replicaNum || 0 }} 副本
-            </span>
+
+            <template v-if="collectionMeta">
+              <span
+                v-if="vectorMetric"
+                class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-950/70 dark:border-emerald-700/60 dark:text-emerald-300"
+                title="向量索引度量方式"
+              >
+                {{ vectorMetric }}
+              </span>
+              <span
+                class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-slate-100 border border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
+                title="分片数"
+              >
+                {{ collectionMeta.shardNum || 1 }} 分片
+              </span>
+              <span
+                class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-slate-100 border border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
+                title="副本数"
+              >
+                {{ collectionMeta.replicaNum || 0 }} 副本
+              </span>
+            </template>
           </div>
         </div>
 
@@ -86,6 +100,7 @@
           :conn-id="connId"
           :database="database"
           :collection="collection"
+          :db-type="dbType"
           :collection-meta="collectionMeta"
         />
 
@@ -109,6 +124,7 @@ const props = defineProps<{
   connId: string;
   database: string;
   collection: string;
+  dbType?: string;
   collectionMeta: CollectionMeta | null;
 }>();
 
