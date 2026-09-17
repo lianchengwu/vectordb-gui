@@ -69,8 +69,10 @@ jobs:
             pkg-config
 
       - name: Install Wails v3 CLI
+        env:
+          CGO_ENABLED: 0
         run: |
-          CGO_ENABLED=0 go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.22
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.22
       - name: Install Frontend Dependencies
         run: |
           cd frontend
