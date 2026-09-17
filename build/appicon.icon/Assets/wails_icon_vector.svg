@@ -1,9 +1,158 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="100%" height="100%" viewBox="0 0 583 533" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
-    <g transform="matrix(1,0,0,1,-246,-251)">
-        <g id="Ebene1">
-            <path d="M246,251L265,784L401,784L506,450L507,450L505,784L641,784L829,251L682,251L596,567L595,567L596,251L478,251L378,568L391,251L246,251Z"/>
-        </g>
-    </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#080c14" />
+      <stop offset="40%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e1b4b" />
+    </linearGradient>
+
+    <!-- Outer Border Gradient -->
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.9" />
+      <stop offset="50%" stop-color="#818cf8" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#c084fc" stop-opacity="0.3" />
+    </linearGradient>
+
+    <!-- Database Cylinder Gradients -->
+    <linearGradient id="cylinderTop" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+
+    <linearGradient id="cylinderBody1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#075985" />
+    </linearGradient>
+
+    <linearGradient id="cylinderBody2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0369a1" />
+      <stop offset="100%" stop-color="#0c4a6e" />
+    </linearGradient>
+
+    <linearGradient id="cylinderBody3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#075985" />
+      <stop offset="100%" stop-color="#082f49" />
+    </linearGradient>
+
+    <!-- Glow Filters -->
+    <filter id="coreGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="20" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <!-- Radial Node Gradients -->
+    <radialGradient id="nodeCyan" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#a5f3fc" />
+      <stop offset="50%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#0891b2" />
+    </radialGradient>
+
+    <radialGradient id="nodePurple" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#f3e8ff" />
+      <stop offset="50%" stop-color="#a855f7" />
+      <stop offset="100%" stop-color="#7e22ce" />
+    </radialGradient>
+
+    <radialGradient id="nodeEmerald" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#d1fae5" />
+      <stop offset="50%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#047857" />
+    </radialGradient>
+
+    <radialGradient id="nodeAmber" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#b45309" />
+    </radialGradient>
+
+    <!-- Central Vector V Gradient -->
+    <linearGradient id="vectorBeam" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="40%" stop-color="#67e8f9" />
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+
+  <!-- Squircle Base -->
+  <rect x="40" y="40" width="944" height="944" rx="224" ry="224" fill="url(#bgGrad)" />
+  <rect x="40" y="40" width="944" height="944" rx="224" ry="224" fill="none" stroke="url(#borderGrad)" stroke-width="8" />
+
+  <!-- Ambient Backdrop Glow -->
+  <circle cx="512" cy="550" r="280" fill="#0284c7" opacity="0.22" filter="url(#coreGlow)" />
+  <circle cx="680" cy="360" r="180" fill="#a855f7" opacity="0.18" filter="url(#coreGlow)" />
+  <circle cx="340" cy="380" r="180" fill="#06b6d4" opacity="0.18" filter="url(#coreGlow)" />
+
+  <!-- High-Dimensional Vector Lattice Lines (Embedding Network) -->
+  <g stroke="#38bdf8" stroke-width="4" stroke-opacity="0.5" stroke-dasharray="10 8" stroke-linecap="round">
+    <!-- Outer constellation -->
+    <line x1="512" y1="360" x2="680" y2="240" />
+    <line x1="680" y1="240" x2="810" y2="340" />
+    <line x1="810" y1="340" x2="750" y2="500" />
+    <line x1="680" y1="240" x2="750" y2="500" />
+
+    <line x1="512" y1="360" x2="340" y2="240" />
+    <line x1="340" y1="240" x2="210" y2="340" />
+    <line x1="210" y1="340" x2="270" y2="500" />
+    <line x1="340" y1="240" x2="270" y2="500" />
+
+    <!-- Inward connection lines to DB core -->
+    <line x1="512" y1="360" x2="512" y2="470" stroke-opacity="0.8" stroke-width="6" stroke-dasharray="none" />
+    <line x1="750" y1="500" x2="640" y2="600" />
+    <line x1="270" y1="500" x2="380" y2="600" />
+  </g>
+
+  <!-- Vector Database Stacks (3-Tier Layered Cylinder) -->
+  <!-- Layer 3 (Bottom) -->
+  <g>
+    <path d="M 302 670 L 302 740 C 302 805 396 850 512 850 C 628 850 722 805 722 740 L 722 670 Z" fill="url(#cylinderBody3)" />
+    <ellipse cx="512" cy="670" rx="210" ry="70" fill="#0369a1" stroke="#38bdf8" stroke-width="3" />
+  </g>
+
+  <!-- Layer 2 (Middle) -->
+  <g>
+    <path d="M 302 555 L 302 620 C 302 685 396 730 512 730 C 628 730 722 685 722 620 L 722 555 Z" fill="url(#cylinderBody2)" />
+    <ellipse cx="512" cy="555" rx="210" ry="70" fill="#0284c7" stroke="#38bdf8" stroke-width="3" />
+  </g>
+
+  <!-- Layer 1 (Top) -->
+  <g>
+    <path d="M 302 440 L 302 505 C 302 570 396 615 512 615 C 628 615 722 570 722 505 L 722 440 Z" fill="url(#cylinderBody1)" />
+    <ellipse cx="512" cy="440" rx="210" ry="70" fill="url(#cylinderTop)" stroke="#7dd3fc" stroke-width="4" />
+
+    <!-- Vector Space Coordinate Rings on Top Face -->
+    <ellipse cx="512" cy="440" rx="150" ry="50" fill="none" stroke="#bae6fd" stroke-width="2.5" stroke-dasharray="8 6" opacity="0.85" />
+    <ellipse cx="512" cy="440" rx="80" ry="26" fill="#0284c7" stroke="#ffffff" stroke-width="3" />
+  </g>
+
+  <!-- Central Search Beacon & Radiating Similarity Pointer -->
+  <g filter="url(#softGlow)">
+    <!-- Upward Similarity Vector Pointer -->
+    <path d="M 512 435 L 482 365 L 504 370 L 512 285 L 520 370 L 542 365 Z" fill="url(#vectorBeam)" />
+    <polygon points="512,275 524,305 512,300 500,305" fill="#ffffff" />
+  </g>
+
+  <!-- Glowing Multi-Dimensional Embedding Nodes -->
+  <!-- Top Center Focal Node -->
+  <circle cx="512" cy="360" r="30" fill="url(#nodeCyan)" filter="url(#softGlow)" stroke="#ffffff" stroke-width="6" />
+  <circle cx="512" cy="360" r="10" fill="#ffffff" />
+
+  <!-- Constellation Nodes -->
+  <circle cx="680" cy="240" r="26" fill="url(#nodePurple)" filter="url(#softGlow)" stroke="#f3e8ff" stroke-width="5" />
+  <circle cx="340" cy="240" r="24" fill="url(#nodeEmerald)" filter="url(#softGlow)" stroke="#ecfdf5" stroke-width="4" />
+  <circle cx="810" cy="340" r="20" fill="url(#nodeAmber)" filter="url(#softGlow)" stroke="#fef9c3" stroke-width="3.5" />
+  <circle cx="210" cy="340" r="20" fill="url(#nodeCyan)" filter="url(#softGlow)" stroke="#cffafe" stroke-width="3.5" />
+  <circle cx="750" cy="500" r="18" fill="url(#nodeEmerald)" stroke="#ffffff" stroke-width="3" />
+  <circle cx="270" cy="500" r="18" fill="url(#nodePurple)" stroke="#ffffff" stroke-width="3" />
+
+  <!-- Database Status LED Indicators -->
+  <circle cx="338" cy="520" r="5" fill="#34d399" filter="url(#softGlow)" />
+  <circle cx="338" cy="635" r="5" fill="#38bdf8" filter="url(#softGlow)" />
+  <circle cx="338" cy="750" r="5" fill="#a855f7" filter="url(#softGlow)" />
 </svg>

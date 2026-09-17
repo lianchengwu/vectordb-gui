@@ -1,7 +1,7 @@
 # Tencent Cloud VectorDB GUI 客户端
 
 <p align="center">
-  <img src="frontend/public/wails.png" width="96" height="96" alt="VectorDB GUI Logo" />
+  <img src="frontend/public/appicon.png" width="96" height="96" alt="VectorDB GUI Logo" />
 </p>
 
 <p align="center">
