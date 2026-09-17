@@ -158,6 +158,21 @@ type DescribeCollectionRequest struct {
 	Collection string `json:"collection"`
 }
 
+type DropCollectionRequest struct {
+	Database   string `json:"database"`
+	Collection string `json:"collection"`
+}
+
+type DropCollectionResponse struct {
+	ResponseHeader
+	AffectedCount int `json:"affectedCount,omitempty"`
+}
+
+type AICollectionViewDropReq struct {
+	Database       string `json:"database"`
+	CollectionView string `json:"collectionView"`
+}
+
 type FieldMeta struct {
 	FieldName   string `json:"fieldName"`
 	FieldType   string `json:"fieldType"`
@@ -217,4 +232,35 @@ type QueryDocumentResponse struct {
 	ResponseHeader
 	Count     uint64                   `json:"count"`
 	Documents []map[string]interface{} `json:"documents"`
+}
+
+type UpdateDocumentQuery struct {
+	DocumentIds      []string `json:"documentIds,omitempty"`
+	DocumentSetIds   []string `json:"documentSetIds,omitempty"`
+	DocumentSetNames []string `json:"documentSetNames,omitempty"`
+	Filter           string   `json:"filter,omitempty"`
+}
+
+type UpdateDocumentRequest struct {
+	Database   string                 `json:"database"`
+	Collection string                 `json:"collection"`
+	Query      UpdateDocumentQuery    `json:"query"`
+	Update     map[string]interface{} `json:"update"`
+}
+
+type AIDocumentSetUpdateReq struct {
+	Database       string `json:"database"`
+	CollectionView string `json:"collectionView"`
+	Query          struct {
+		DocumentSetId    []string `json:"documentSetId,omitempty"`
+		DocumentSetIds   []string `json:"documentSetIds,omitempty"`
+		DocumentSetNames []string `json:"documentSetNames,omitempty"`
+		Filter           string   `json:"filter,omitempty"`
+	} `json:"query"`
+	Update map[string]interface{} `json:"update"`
+}
+
+type UpdateDocumentResponse struct {
+	ResponseHeader
+	AffectedCount int `json:"affectedCount,omitempty"`
 }

@@ -68,3 +68,20 @@ func (s *ConnectionService) TestConnection(cfg storage.ConnectionConfig) (*TestC
 	}
 	return &TestConnectionResult{Success: ok, Message: msg}, nil
 }
+
+func (s *ConnectionService) FetchDatabases(cfg storage.ConnectionConfig) ([]client.DatabaseDetail, error) {
+	timeout := time.Duration(cfg.Timeout) * time.Second
+	if timeout <= 0 {
+		timeout = 10 * time.Second
+	}
+	cli, err := client.NewClientWithConfig(cfg, timeout)
+	if err != nil {
+		return nil, fmt.Errorf("创建客户端连接失败: %w", err)
+	}
+	defer cli.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	return cli.ListDatabasesDetailed(ctx)
+}

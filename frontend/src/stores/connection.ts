@@ -1,10 +1,11 @@
 import { ref, computed } from "vue";
-import type { ConnectionConfig, TestResult } from "../types";
+import type { ConnectionConfig, TestResult, DatabaseDetail } from "../types";
 import {
   ListConnections,
   SaveConnection,
   DeleteConnection,
   TestConnection,
+  FetchDatabases,
 } from "../../bindings/vectordb-1/backend/service/connectionservice";
 
 const connections = ref<ConnectionConfig[]>([]);
@@ -117,6 +118,15 @@ export function useConnectionStore() {
     }
   }
 
+  async function fetchDatabases(config: ConnectionConfig): Promise<DatabaseDetail[]> {
+    try {
+      const res = await FetchDatabases(config);
+      return res || [];
+    } catch (e: unknown) {
+      throw new Error(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   return {
     connections,
     activeConnectionId,
@@ -133,5 +143,6 @@ export function useConnectionStore() {
     save,
     remove,
     test,
+    fetchDatabases,
   };
 }

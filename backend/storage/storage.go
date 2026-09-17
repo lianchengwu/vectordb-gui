@@ -47,6 +47,7 @@ type ConnectionConfig struct {
 	Username   string          `json:"username"`
 	APIKey     string          `json:"apiKey"`
 	Timeout    int             `json:"timeout"` // in seconds
+	Databases  []string        `json:"databases,omitempty"`
 	ProxyChain []NetworkHop    `json:"proxyChain,omitempty"`
 	Proxy      ProxyConfig     `json:"proxy,omitempty"`
 	SSHTunnel  SSHTunnelConfig `json:"sshTunnel,omitempty"`
@@ -80,6 +81,22 @@ func (s *Storage) List() ([]ConnectionConfig, error) {
 	defer s.mu.RUnlock()
 
 	return s.listUnlocked()
+}
+
+func (s *Storage) Get(id string) (*ConnectionConfig, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	conns, err := s.listUnlocked()
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range conns {
+		if c.ID == id {
+			return &c, nil
+		}
+	}
+	return nil, nil
 }
 
 func (s *Storage) Save(config ConnectionConfig) error {

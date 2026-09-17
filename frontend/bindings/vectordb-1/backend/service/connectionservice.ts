@@ -7,6 +7,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as client$0 from "../client/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as storage$0 from "../storage/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -15,6 +18,10 @@ import * as $models from "./models.js";
 
 export function DeleteConnection(id: string): $CancellablePromise<void> {
     return $Call.ByID(4051920909, id);
+}
+
+export function FetchDatabases(cfg: storage$0.ConnectionConfig): $CancellablePromise<client$0.DatabaseDetail[] | null> {
+    return $Call.ByID(3822898700, cfg);
 }
 
 export function ListConnections(): $CancellablePromise<storage$0.ConnectionConfig[] | null> {

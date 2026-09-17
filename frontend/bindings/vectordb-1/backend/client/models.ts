@@ -46,3 +46,10 @@ export interface QueryDocumentResponse {
     "count": number;
     "documents": ({ [_ in string]?: any } | null)[] | null;
 }
+
+export interface UpdateDocumentQuery {
+    "documentIds"?: string[] | null;
+    "documentSetIds"?: string[] | null;
+    "documentSetNames"?: string[] | null;
+    "filter"?: string;
+}

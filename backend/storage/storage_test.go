@@ -44,8 +44,9 @@ func TestConnectionStorage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to list configs: %v", err)
 	}
-	// Test Update
+	// Test Update with Databases
 	cfg.Name = "Updated Cluster"
+	cfg.Databases = []string{"db_test", "db_prod"}
 	err = store.Save(cfg)
 	if err != nil {
 		t.Fatalf("failed to update config: %v", err)
@@ -54,9 +55,21 @@ func TestConnectionStorage(t *testing.T) {
 	if err != nil || len(conns) != 1 || conns[0].Name != "Updated Cluster" {
 		t.Fatalf("expected updated name, got %+v", conns)
 	}
+	if len(conns[0].Databases) != 2 || conns[0].Databases[0] != "db_test" {
+		t.Fatalf("expected Databases to be saved, got %+v", conns[0].Databases)
+	}
 
-	if len(conns) != 1 || conns[0].ID != "conn-1" {
-		t.Fatalf("expected conn-1, got %+v", conns)
+	// Test Get
+	got, err := store.Get("conn-1")
+	if err != nil || got == nil {
+		t.Fatalf("expected to get conn-1, got err=%v, config=%+v", err, got)
+	}
+	if got.Name != "Updated Cluster" || len(got.Databases) != 2 {
+		t.Fatalf("expected matching config from Get, got %+v", got)
+	}
+	notExist, err := store.Get("non-existent")
+	if err != nil || notExist != nil {
+		t.Fatalf("expected nil for non-existent id, got %+v", notExist)
 	}
 
 	// Test Delete

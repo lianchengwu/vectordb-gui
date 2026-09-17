@@ -6,5 +6,6 @@ export type {
     DatabaseDetail,
     FieldMeta,
     IndexColumn,
-    QueryDocumentResponse
+    QueryDocumentResponse,
+    UpdateDocumentQuery
 } from "./models.js";

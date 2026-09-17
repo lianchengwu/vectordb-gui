@@ -77,6 +77,38 @@ func TestVectorDBClient(t *testing.T) {
 		}`))
 	})
 
+	// Mock /collection/drop
+	mux.HandleFunc("/collection/drop", func(w http.ResponseWriter, r *http.Request) {
+		var req DropCollectionRequest
+		json.NewDecoder(r.Body).Decode(&req)
+		if req.Database == "" || req.Collection == "" {
+			http.Error(w, `{"code":400,"msg":"database and collection required"}`, http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"code": 0,
+			"msg": "operation success",
+			"affectedCount": 1
+		}`))
+	})
+
+	// Mock /document/update
+	mux.HandleFunc("/document/update", func(w http.ResponseWriter, r *http.Request) {
+		var req UpdateDocumentRequest
+		json.NewDecoder(r.Body).Decode(&req)
+		if req.Database == "" || req.Collection == "" {
+			http.Error(w, `{"code":400,"msg":"database and collection required"}`, http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"code": 0,
+			"msg": "operation success",
+			"affectedCount": 1
+		}`))
+	})
+
 	// Mock /document/query
 	mux.HandleFunc("/document/query", func(w http.ResponseWriter, r *http.Request) {
 		var req QueryDocumentRequest
@@ -137,6 +169,19 @@ func TestVectorDBClient(t *testing.T) {
 		t.Fatalf("unexpected query resp: %+v", qResp)
 	}
 
+	// Test DropCollection
+	if err := cli.DropCollection(context.Background(), "db_test", "coll_articles", "base"); err != nil {
+		t.Fatalf("DropCollection failed: %v", err)
+	}
+
+	// Test UpdateDocument (Base)
+	updateErr := cli.UpdateDocument(context.Background(), "db_test", "coll_articles", "base", UpdateDocumentQuery{
+		DocumentIds: []string{"doc-1"},
+	}, map[string]interface{}{"title": "updated title"})
+	if updateErr != nil {
+		t.Fatalf("UpdateDocument failed: %v", updateErr)
+	}
+
 	// Test Ping
 	ok, msg, err := cli.Ping(context.Background())
 	if err != nil || !ok {
@@ -167,3 +212,79 @@ func TestVectorDBClient_ObjectDatabases(t *testing.T) {
 		t.Fatalf("unexpected dbs: %+v", dbs)
 	}
 }
+
+func TestSanitizeUpdate(t *testing.T) {
+	// Nested metaData should be unpacked to top-level scalars
+	input := map[string]interface{}{
+		"title": "Document Title",
+		"metaData": map[string]interface{}{
+			"is_enabled": true,
+			"author":     "Alice",
+		},
+	}
+	res := sanitizeUpdate(input)
+	if res["title"] != "Document Title" {
+		t.Errorf("expected title to be 'Document Title', got %v", res["title"])
+	}
+	if res["is_enabled"] != true {
+		t.Errorf("expected is_enabled to be true, got %v", res["is_enabled"])
+	}
+	if res["author"] != "Alice" {
+		t.Errorf("expected author to be 'Alice', got %v", res["author"])
+	}
+	if _, exists := res["metaData"]; exists {
+		t.Errorf("expected metaData to be flattened, but it still exists")
+	}
+
+	// Deeply nested non-meta object
+	input2 := map[string]interface{}{
+		"extra": map[string]interface{}{
+			"count": 42,
+		},
+	}
+	res2 := sanitizeUpdate(input2)
+	if res2["extra_count"] != 42 {
+		t.Errorf("expected extra_count to be 42, got %v", res2["extra_count"])
+	}
+}
+
+func TestFilterAIRuntimeFields(t *testing.T) {
+	input := map[string]interface{}{
+		"documentSetName":    "my_doc.pdf",
+		"documentsetid":      "12345",
+		"status":             "ready",
+		"byteSize":           1024,
+		"appendTitleToChunk": false,
+		"author":             "tencent",
+		"is_enabled":         true,
+		"is_open":            false,
+		"weight":             float64(42),
+	}
+	filtered := filterAIRuntimeFields(input)
+	if len(filtered) != 4 {
+		t.Errorf("expected 4 custom fields, got %d: %+v", len(filtered), filtered)
+	}
+	if filtered["author"] != "tencent" {
+		t.Errorf("expected author to be 'tencent', got %v", filtered["author"])
+	}
+	if filtered["is_enabled"] != uint64(1) {
+		t.Errorf("expected is_enabled to be uint64(1), got %v (type %T)", filtered["is_enabled"], filtered["is_enabled"])
+	}
+	if filtered["is_open"] != uint64(0) {
+		t.Errorf("expected is_open to be uint64(0), got %v (type %T)", filtered["is_open"], filtered["is_open"])
+	}
+	if filtered["weight"] != uint64(42) {
+		t.Errorf("expected weight to be uint64(42), got %v (type %T)", filtered["weight"], filtered["weight"])
+	}
+	if _, ok := filtered["documentSetName"]; ok {
+		t.Errorf("expected documentSetName to be filtered out")
+	}
+	if _, ok := filtered["appendTitleToChunk"]; ok {
+		t.Errorf("expected appendTitleToChunk to be filtered out")
+	}
+	if _, ok := filtered["status"]; ok {
+		t.Errorf("expected status to be filtered out")
+	}
+}
+
+

@@ -4,6 +4,8 @@ import {
   ListDatabasesDetailed,
   ListCollections,
   DescribeCollection,
+  DropCollection,
+  UpdateDocument,
 } from "../../bindings/vectordb-1/backend/service/vectordbservice";
 
 const databases = ref<DatabaseDetail[]>([]);
@@ -73,6 +75,33 @@ export function useVectorDBStore() {
     if (!isExpanded && !collectionsByDb.value[database]) {
       await loadCollections(connId, database, getDbType(database));
     }
+  }
+
+  async function refreshDatabase(connId: string, database: string, dbType?: string) {
+    if (!connId || !database) return;
+    expandedDbs.value[database] = true;
+    await loadCollections(connId, database, dbType || getDbType(database));
+  }
+
+  async function expandAllDatabases(connId: string) {
+    if (!connId) return;
+    for (const db of databases.value) {
+      expandedDbs.value[db.name] = true;
+      if (!collectionsByDb.value[db.name]) {
+        await loadCollections(connId, db.name, db.dbType);
+      }
+    }
+  }
+
+  function collapseAllDatabases() {
+    for (const db of databases.value) {
+      expandedDbs.value[db.name] = false;
+    }
+  }
+
+  function closeTabsByDatabase(database: string) {
+    const toClose = openTabs.value.filter((t) => t.database === database);
+    toClose.forEach((t) => closeTab(t.id));
   }
 
   // Open or switch to a collection tab
@@ -148,6 +177,47 @@ export function useVectorDBStore() {
     activeTabId.value = "";
   }
 
+  async function deleteCollection(connId: string, database: string, collection: string, dbType?: string) {
+    if (!connId || !database || !collection) return;
+    const type = dbType || getDbType(database);
+    await DropCollection(connId, database, collection, type);
+
+    // Remove from collectionsByDb
+    if (collectionsByDb.value[database]) {
+      collectionsByDb.value[database] = collectionsByDb.value[database].filter((c) => c !== collection);
+    }
+
+    // If any open tab corresponds to this collection, close it
+    const matchingTabs = openTabs.value.filter(
+      (t) => t.connId === connId && t.database === database && t.collection === collection
+    );
+    matchingTabs.forEach((t) => closeTab(t.id));
+  }
+
+  async function updateDocument(
+    connId: string,
+    database: string,
+    collection: string,
+    dbType: string,
+    query: { documentIds?: string[]; documentSetIds?: string[]; filter?: string },
+    update: Record<string, any>
+  ) {
+    if (!connId || !database || !collection) return;
+    const type = dbType || getDbType(database);
+    await UpdateDocument({
+      connectionId: connId,
+      database,
+      collection,
+      dbType: type,
+      query: {
+        documentIds: query.documentIds || [],
+        documentSetIds: query.documentSetIds || [],
+        filter: query.filter || "",
+      },
+      update,
+    });
+  }
+
   function reset() {
     databases.value = [];
     collectionsByDb.value = {};
@@ -171,11 +241,17 @@ export function useVectorDBStore() {
     loadDatabases,
     loadCollections,
     toggleDatabase,
+    refreshDatabase,
+    expandAllDatabases,
+    collapseAllDatabases,
+    closeTabsByDatabase,
     openCollectionTab,
     setActiveTab,
     closeTab,
     closeOtherTabs,
     closeAllTabs,
+    deleteCollection,
+    updateDocument,
     reset,
   };
 }

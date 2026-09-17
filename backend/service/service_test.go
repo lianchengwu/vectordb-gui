@@ -62,6 +62,18 @@ func setupMockServer(t *testing.T) *httptest.Server {
 				},
 			}
 			_ = json.NewEncoder(w).Encode(resp)
+		case "/collection/drop":
+			resp := client.DropCollectionResponse{
+				ResponseHeader: client.ResponseHeader{Code: 0, Message: "Success"},
+				AffectedCount:  1,
+			}
+			_ = json.NewEncoder(w).Encode(resp)
+		case "/document/update":
+			resp := client.UpdateDocumentResponse{
+				ResponseHeader: client.ResponseHeader{Code: 0, Message: "Success"},
+				AffectedCount:  1,
+			}
+			_ = json.NewEncoder(w).Encode(resp)
 		default:
 			http.NotFound(w, r)
 		}
@@ -247,7 +259,26 @@ func TestVectorDBService_Operations(t *testing.T) {
 		t.Fatalf("unexpected query result: %+v", res)
 	}
 
-	// 5. Non-existent connection ID
+	// 5. UpdateDocument
+	if err := vdbSvc.UpdateDocument(UpdateDocumentParams{
+		ConnectionID: "test-conn",
+		Database:     "db_test1",
+		Collection:   "coll_1",
+		DbType:       "base",
+		Query: client.UpdateDocumentQuery{
+			DocumentIds: []string{"doc_1"},
+		},
+		Update: map[string]interface{}{"text": "updated text"},
+	}); err != nil {
+		t.Fatalf("UpdateDocument failed: %v", err)
+	}
+
+	// 6. DropCollection
+	if err := vdbSvc.DropCollection("test-conn", "db_test1", "coll_1", "base"); err != nil {
+		t.Fatalf("DropCollection failed: %v", err)
+	}
+
+	// 6. Non-existent connection ID
 	_, err = vdbSvc.ListDatabases("unknown-conn")
 	if err == nil {
 		t.Fatalf("expected error for unknown connection ID")
@@ -371,3 +402,134 @@ func TestVectorDBService_Concurrency(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestConnectionService_FetchDatabases(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/database/list" {
+			resp := client.ListDatabasesResponse{
+				ResponseHeader: client.ResponseHeader{Code: 0, Message: "Success"},
+				Databases: []client.DatabaseEntry{
+					{Name: "db_alpha"},
+					{Name: "db_beta"},
+				},
+				Info: map[string]*client.DatabaseInfo{
+					"db_alpha": {DbType: "base"},
+					"db_beta":  {DbType: "ai"},
+				},
+			}
+			_ = json.NewEncoder(w).Encode(resp)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	connSvc := NewConnectionService()
+	cfg := storage.ConnectionConfig{
+		URL:      server.URL,
+		Username: "root",
+		APIKey:   "secret",
+		Timeout:  5,
+	}
+
+	details, err := connSvc.FetchDatabases(cfg)
+	if err != nil {
+		t.Fatalf("expected FetchDatabases to succeed, got %v", err)
+	}
+	if len(details) != 2 {
+		t.Fatalf("expected 2 databases, got %d", len(details))
+	}
+	if details[0].Name != "db_alpha" || details[1].DbType != "ai" {
+		t.Fatalf("unexpected databases result: %+v", details)
+	}
+}
+
+func TestVectorDBService_VisibleDatabasesFilter(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/database/list" {
+			resp := client.ListDatabasesResponse{
+				ResponseHeader: client.ResponseHeader{Code: 0, Message: "Success"},
+				Databases: []client.DatabaseEntry{
+					{Name: "db1"},
+					{Name: "db2"},
+					{Name: "db3"},
+				},
+				Info: map[string]*client.DatabaseInfo{
+					"db1": {DbType: "base"},
+					"db2": {DbType: "ai"},
+					"db3": {DbType: "base"},
+				},
+			}
+			_ = json.NewEncoder(w).Encode(resp)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	tempDir, err := os.MkdirTemp("", "tcvectordb-svc-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	store := storage.NewStorageWithPath(filepath.Join(tempDir, "conns.json"))
+
+	// 1. Connection with no whitelist -> returns all 3
+	cfgAll := storage.ConnectionConfig{
+		ID:       "conn-all",
+		Name:     "All DBs",
+		URL:      server.URL,
+		Username: "root",
+		APIKey:   "k",
+		Timeout:  5,
+	}
+	_ = store.Save(cfgAll)
+
+	// 2. Connection with whitelist: only db2 and db_custom
+	cfgFilter := storage.ConnectionConfig{
+		ID:        "conn-filter",
+		Name:      "Filtered DBs",
+		URL:       server.URL,
+		Username:  "root",
+		APIKey:    "k",
+		Timeout:   5,
+		Databases: []string{"db2", "db_custom"},
+	}
+	_ = store.Save(cfgFilter)
+
+	vdbSvc := NewVectorDBServiceWithStorage(store)
+
+	// Test conn-all
+	dbsAll, err := vdbSvc.ListDatabases("conn-all")
+	if err != nil {
+		t.Fatalf("ListDatabases failed: %v", err)
+	}
+	if len(dbsAll) != 3 {
+		t.Errorf("expected 3 dbs, got %d", len(dbsAll))
+	}
+
+	// Test conn-filter
+	detailsFilter, err := vdbSvc.ListDatabasesDetailed("conn-filter")
+	if err != nil {
+		t.Fatalf("ListDatabasesDetailed failed: %v", err)
+	}
+	if len(detailsFilter) != 2 {
+		t.Fatalf("expected 2 filtered dbs, got %d", len(detailsFilter))
+	}
+	if detailsFilter[0].Name != "db2" || detailsFilter[0].DbType != "ai" {
+		t.Errorf("expected db2 with ai type, got %+v", detailsFilter[0])
+	}
+	if detailsFilter[1].Name != "db_custom" || detailsFilter[1].DbType != "base" {
+		t.Errorf("expected db_custom with base type, got %+v", detailsFilter[1])
+	}
+
+	dbsFilter, err := vdbSvc.ListDatabases("conn-filter")
+	if err != nil {
+		t.Fatalf("ListDatabases failed: %v", err)
+	}
+	if len(dbsFilter) != 2 || dbsFilter[0] != "db2" || dbsFilter[1] != "db_custom" {
+		t.Errorf("expected [db2, db_custom], got %+v", dbsFilter)
+	}
+}
+

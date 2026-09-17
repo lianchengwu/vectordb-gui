@@ -12,6 +12,7 @@ export interface ConnectionConfig {
      * in seconds
      */
     "timeout": number;
+    "databases"?: string[] | null;
     "proxyChain"?: NetworkHop[] | null;
     "proxy"?: ProxyConfig;
     "sshTunnel"?: SSHTunnelConfig;

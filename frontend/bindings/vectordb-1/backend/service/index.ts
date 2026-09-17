@@ -10,5 +10,6 @@ export {
 
 export type {
     QueryDocumentsParams,
-    TestConnectionResult
+    TestConnectionResult,
+    UpdateDocumentParams
 } from "./models.js";

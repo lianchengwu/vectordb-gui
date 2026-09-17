@@ -17,6 +17,10 @@ export function DescribeCollection(connID: string, database: string, collection:
     return $Call.ByID(3631453886, connID, database, collection, dbType);
 }
 
+export function DropCollection(connID: string, database: string, collection: string, dbType: string): $CancellablePromise<void> {
+    return $Call.ByID(3951098962, connID, database, collection, dbType);
+}
+
 /**
  * InvalidateCache removes the cached client for a given connection ID,
  * or purges all cached clients if connID is empty.
@@ -39,4 +43,8 @@ export function ListDatabasesDetailed(connID: string): $CancellablePromise<clien
 
 export function QueryDocuments(params: $models.QueryDocumentsParams): $CancellablePromise<client$0.QueryDocumentResponse | null> {
     return $Call.ByID(3724154521, params);
+}
+
+export function UpdateDocument(params: $models.UpdateDocumentParams): $CancellablePromise<void> {
+    return $Call.ByID(255719591, params);
 }

@@ -175,7 +175,8 @@
           <tr
             v-for="(doc, rowIdx) in documents"
             :key="rowIdx"
-            class="hover:bg-blue-50/40 dark:hover:bg-slate-800/50 transition group"
+            @contextmenu.prevent.stop="onRowContextMenu($event, doc)"
+            class="hover:bg-blue-50/40 dark:hover:bg-slate-800/50 transition group cursor-pointer"
           >
             <!-- Row index -->
             <td class="px-3 py-2 text-center text-slate-400 dark:text-slate-500 border-r border-slate-200/60 dark:border-slate-800/40 text-[11px]">
@@ -207,15 +208,27 @@
             </td>
 
             <!-- Action column -->
-            <td class="px-3 py-2 text-center">
-              <button
-                @click="openDetail(doc)"
-                class="px-2 py-1 rounded bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-600 dark:bg-slate-800 dark:hover:bg-blue-600 dark:hover:text-white dark:text-slate-400 transition text-[11px] inline-flex items-center gap-1 shadow-sm"
-                title="查看完整文档 JSON"
-              >
-                <Eye class="w-3 h-3" />
-                <span>JSON</span>
-              </button>
+            <td class="px-3 py-2 text-center whitespace-nowrap">
+              <div class="inline-flex items-center gap-1.5 justify-center">
+                <button
+                  type="button"
+                  @click.stop="openEdit(doc)"
+                  class="px-2 py-1 rounded bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white dark:bg-blue-950/70 dark:text-blue-300 dark:hover:bg-blue-600 dark:hover:text-white transition text-[11px] inline-flex items-center gap-1 shadow-sm font-medium"
+                  title="编辑文档可修改字段 (或右键点击整行)"
+                >
+                  <Pencil class="w-3 h-3" />
+                  <span>编辑</span>
+                </button>
+                <button
+                  type="button"
+                  @click.stop="openDetail(doc)"
+                  class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-700 hover:text-white text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:hover:text-white dark:text-slate-300 transition text-[11px] inline-flex items-center gap-1 shadow-sm"
+                  title="查看完整文档 JSON"
+                >
+                  <Eye class="w-3 h-3" />
+                  <span>JSON</span>
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -228,11 +241,89 @@
       :document="selectedDoc"
       @close="detailModalOpen = false"
     />
+
+    <!-- Document Edit Modal -->
+    <DocumentEditModal
+      :is-open="editModalOpen"
+      :document="editingDoc"
+      :collection-meta="collectionMeta"
+      :database="database"
+      :collection="collection"
+      :db-type="effectiveDbType"
+      :conn-id="connId"
+      @close="editModalOpen = false"
+      @saved="onDocSaved"
+    />
+
+    <!-- Row Right-click Context Menu -->
+    <Teleport to="body">
+      <div
+        v-if="docContextMenu.visible"
+        :style="{ top: `${docContextMenu.y}px`, left: `${docContextMenu.x}px` }"
+        class="fixed z-[9999] min-w-[160px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl py-1 text-xs text-slate-700 dark:text-slate-200 select-none"
+        @click.stop
+        @contextmenu.prevent.stop
+      >
+        <!-- Header: Doc ID -->
+        <div class="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800/60 font-mono text-[10px] text-slate-400 truncate max-w-[200px]" :title="getDocId(docContextMenu.doc)">
+          ID: {{ getDocId(docContextMenu.doc) }}
+        </div>
+
+        <button
+          type="button"
+          @click="handleContextEdit"
+          class="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-blue-600 dark:text-blue-400 font-medium"
+        >
+          <Pencil class="w-3.5 h-3.5" />
+          <span>编辑文档</span>
+        </button>
+
+        <button
+          type="button"
+          @click="handleContextViewJson"
+          class="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-700 dark:text-slate-300"
+        >
+          <Eye class="w-3.5 h-3.5 text-slate-400" />
+          <span>查看完整 JSON</span>
+        </button>
+
+        <div class="my-1 border-t border-slate-100 dark:border-slate-800/60"></div>
+
+        <button
+          type="button"
+          @click="handleContextCopyId"
+          class="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-700 dark:text-slate-300"
+        >
+          <Copy class="w-3.5 h-3.5 text-slate-400" />
+          <span>复制文档 ID</span>
+        </button>
+
+        <button
+          type="button"
+          @click="handleContextCopyJson"
+          class="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-700 dark:text-slate-300"
+        >
+          <Copy class="w-3.5 h-3.5 text-slate-400" />
+          <span>复制整行 JSON</span>
+        </button>
+      </div>
+    </Teleport>
+
+    <!-- Feedback Toast -->
+    <Teleport to="body">
+      <div
+        v-if="toastMessage"
+        class="fixed bottom-6 right-6 z-[9999] px-4 py-2.5 rounded-lg shadow-xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-xs flex items-center gap-2 select-none animate-fade-in"
+      >
+        <Check class="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+        <span>{{ toastMessage }}</span>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import {
   Filter,
   Search,
@@ -247,11 +338,15 @@ import {
   Sparkles,
   ShieldAlert,
   ExternalLink,
+  Pencil,
+  Copy,
+  Check,
 } from "lucide-vue-next";
 import { Browser } from "@wailsio/runtime";
 import { QueryDocuments } from "../../bindings/vectordb-1/backend/service/vectordbservice";
 import type { CollectionMeta } from "../types";
 import JsonDetailModal from "./JsonDetailModal.vue";
+import DocumentEditModal from "./DocumentEditModal.vue";
 
 const props = defineProps<{
   connId: string;
@@ -260,6 +355,12 @@ const props = defineProps<{
   dbType?: string;
   collectionMeta: CollectionMeta | null;
 }>();
+
+const effectiveDbType = computed(() => {
+  if (props.collectionMeta?.isAiCollection) return "ai";
+  if (props.dbType === "ai") return "ai";
+  return "base";
+});
 
 const filterInput = ref("");
 const activeFilter = ref("");
@@ -272,6 +373,135 @@ const error = ref("");
 
 const detailModalOpen = ref(false);
 const selectedDoc = ref<Record<string, unknown> | null>(null);
+
+const editModalOpen = ref(false);
+const editingDoc = ref<Record<string, unknown> | null>(null);
+
+interface DocContextMenuState {
+  visible: boolean;
+  x: number;
+  y: number;
+  doc: Record<string, unknown> | null;
+}
+
+const docContextMenu = ref<DocContextMenuState>({
+  visible: false,
+  x: 0,
+  y: 0,
+  doc: null,
+});
+
+const toastMessage = ref("");
+let toastTimeout: ReturnType<typeof setTimeout> | null = null;
+let lastContextMenuTime = 0;
+
+function showToast(msg: string) {
+  toastMessage.value = msg;
+  if (toastTimeout) clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => {
+    toastMessage.value = "";
+  }, 2500);
+}
+
+function getDocId(doc: Record<string, unknown> | null): string {
+  if (!doc) return "";
+  if (props.dbType === "ai" && doc["documentSetId"]) return String(doc["documentSetId"]);
+  if (props.collectionMeta?.fields) {
+    const pk = props.collectionMeta.fields.find((f) => f.primaryKey);
+    if (pk && doc[pk.fieldName] !== undefined) return String(doc[pk.fieldName]);
+  }
+  return String(doc["id"] ?? doc["_id"] ?? doc["doc_id"] ?? doc["documentSetId"] ?? "");
+}
+
+function openEdit(doc: Record<string, unknown>) {
+  editingDoc.value = doc;
+  editModalOpen.value = true;
+}
+
+function onDocSaved() {
+  showToast("文档已成功更新");
+  fetchData();
+}
+
+function onRowContextMenu(e: MouseEvent, doc: Record<string, unknown>) {
+  e.preventDefault();
+  e.stopPropagation();
+  lastContextMenuTime = Date.now();
+  const menuWidth = 170;
+  const menuHeight = 180;
+  const clientX = e.clientX || (e.target as HTMLElement)?.getBoundingClientRect?.().left || 100;
+  const clientY = e.clientY || (e.target as HTMLElement)?.getBoundingClientRect?.().bottom || 100;
+  const x = Math.min(clientX, window.innerWidth - menuWidth - 8);
+  const y = Math.min(clientY, window.innerHeight - menuHeight - 8);
+
+  docContextMenu.value = {
+    visible: true,
+    x: Math.max(8, x),
+    y: Math.max(8, y),
+    doc,
+  };
+}
+
+function closeDocContextMenu() {
+  docContextMenu.value.visible = false;
+}
+
+function onWindowClick(e?: MouseEvent) {
+  if (Date.now() - lastContextMenuTime < 200) return;
+  if (e && e.button !== 0) return;
+  closeDocContextMenu();
+}
+
+function handleKeyDown(e: KeyboardEvent) {
+  if (e.key === "Escape") {
+    if (docContextMenu.value.visible) {
+      closeDocContextMenu();
+    }
+  }
+}
+
+function handleContextEdit() {
+  const doc = docContextMenu.value.doc;
+  closeDocContextMenu();
+  if (doc) {
+    openEdit(doc);
+  }
+}
+
+function handleContextViewJson() {
+  const doc = docContextMenu.value.doc;
+  closeDocContextMenu();
+  if (doc) {
+    openDetail(doc);
+  }
+}
+
+async function handleContextCopyId() {
+  const doc = docContextMenu.value.doc;
+  closeDocContextMenu();
+  if (doc) {
+    const id = getDocId(doc);
+    try {
+      await navigator.clipboard.writeText(id);
+      showToast(`已复制 ID: ${id}`);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+async function handleContextCopyJson() {
+  const doc = docContextMenu.value.doc;
+  closeDocContextMenu();
+  if (doc) {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(doc, null, 2));
+      showToast("已复制整行文档 JSON");
+    } catch {
+      // ignore
+    }
+  }
+}
 
 
 const isAIPrivilegeError = computed(() => {
@@ -430,6 +660,14 @@ watch(
 );
 
 onMounted(() => {
+  window.addEventListener("click", onWindowClick);
+  window.addEventListener("keydown", handleKeyDown);
   fetchData();
+});
+
+onUnmounted(() => {
+  window.removeEventListener("click", onWindowClick);
+  window.removeEventListener("keydown", handleKeyDown);
+  if (toastTimeout) clearTimeout(toastTimeout);
 });
 </script>

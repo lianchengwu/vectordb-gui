@@ -130,6 +130,115 @@
               </button>
             </div>
           </div>
+
+          <!-- Visible Databases Filter -->
+          <div class="pt-3 border-t border-slate-200/80 dark:border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block font-medium text-slate-700 dark:text-slate-300">
+                  可显示数据库 (Visible Databases)
+                </label>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  设置在左侧导航树中允许显示的数据库。留空则默认展示集群中全部数据库。
+                </p>
+              </div>
+              <button
+                type="button"
+                @click="onFetchDatabases"
+                :disabled="isFetchingDbs || !form.url || !form.apiKey"
+                class="px-2.5 py-1 rounded-md text-[11px] font-medium border border-blue-200 dark:border-blue-800/60 bg-blue-50/80 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 dark:text-blue-300 transition flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-xs"
+                title="连接集群并拉取现有数据库列表"
+              >
+                <Loader2 v-if="isFetchingDbs" class="w-3 h-3 animate-spin text-blue-600" />
+                <RefreshCw v-else class="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                <span>{{ isFetchingDbs ? '拉取中...' : '拉取集群数据库' }}</span>
+              </button>
+            </div>
+
+            <!-- Manual input field (comma-separated) -->
+            <div>
+              <input
+                v-model="databaseInput"
+                @blur="syncFromDatabaseInput"
+                @keydown.enter.prevent="syncFromDatabaseInput"
+                type="text"
+                placeholder="支持逗号分隔手动输入，例如: db_test, db_prod"
+                class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 dark:bg-slate-800/80 dark:border-slate-700 dark:text-white dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition font-mono text-xs shadow-inner"
+              />
+            </div>
+
+            <!-- Fetch error banner if any -->
+            <div v-if="fetchDbError" class="p-2 rounded bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-900 dark:text-rose-300 text-[11px] flex items-center gap-1.5">
+              <AlertCircle class="w-3.5 h-3.5 shrink-0" />
+              <span class="truncate">{{ fetchDbError }}</span>
+            </div>
+
+            <!-- Cluster databases chips / selection area -->
+            <div v-if="availableDatabases.length > 0" class="p-3 rounded-lg bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 space-y-2">
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1">
+                  <Database class="w-3 h-3 text-slate-400" />
+                  <span>集群中检测到 {{ availableDatabases.length }} 个数据库（点击勾选需要显示的库）：</span>
+                </span>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    @click="selectAllDbs"
+                    class="text-blue-600 hover:text-blue-500 dark:text-blue-400 font-medium cursor-pointer"
+                  >
+                    全选
+                  </button>
+                  <span class="text-slate-300 dark:text-slate-700">|</span>
+                  <button
+                    type="button"
+                    @click="clearAllDbs"
+                    class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"
+                  >
+                    清空 (全部展示)
+                  </button>
+                </div>
+              </div>
+
+              <!-- Database chips -->
+              <div class="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1">
+                <button
+                  v-for="db in availableDatabases"
+                  :key="db.name"
+                  type="button"
+                  @click="toggleDbSelection(db.name)"
+                  :class="[
+                    'px-2.5 py-1 rounded-md text-xs font-mono transition flex items-center gap-1.5 border cursor-pointer select-none',
+                    isDbSelected(db.name)
+                      ? 'bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-950/60 dark:border-blue-700 dark:text-blue-300 shadow-xs'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 dark:bg-slate-900 dark:border-slate-700/80 dark:text-slate-400 dark:hover:border-slate-600'
+                  ]"
+                >
+                  <Check v-if="isDbSelected(db.name)" class="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                  <span v-else class="w-3 h-3 rounded-full border border-slate-300 dark:border-slate-600 shrink-0"></span>
+                  <span>{{ db.name }}</span>
+                  <span
+                    :class="[
+                      'px-1 py-0.2 rounded text-[9px] font-sans font-medium',
+                      db.dbType === 'ai'
+                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'
+                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                    ]"
+                  >
+                    {{ db.dbType === 'ai' ? 'AI' : 'BASE' }}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Selected summary -->
+            <div v-if="selectedDatabases.length > 0" class="text-[11px] text-blue-600 dark:text-blue-400 flex items-center gap-1 font-mono">
+              <span>已选 {{ selectedDatabases.length }} 个可见库：</span>
+              <span class="font-medium truncate">{{ selectedDatabases.join(', ') }}</span>
+            </div>
+            <div v-else class="text-[11px] text-slate-400 dark:text-slate-500">
+              当前未限制可见数据库（将展示该集群下所有数据库）。
+            </div>
+          </div>
         </div>
 
         <!-- NETWORK CHAIN TAB (Multi-Hop User-Defined Chain) -->
@@ -497,11 +606,15 @@ import {
   Trash2,
   ArrowUp,
   ArrowDown,
+  RefreshCw,
+  Check,
 } from "lucide-vue-next";
 import { useConnectionStore } from "../stores/connection";
-import type { ConnectionConfig, NetworkHop, TestResult } from "../types";
+import { useVectorDBStore } from "../stores/vectordb";
+import type { ConnectionConfig, NetworkHop, TestResult, DatabaseDetail } from "../types";
 
 const store = useConnectionStore();
+const vdbStore = useVectorDBStore();
 const { isModalOpen, editingConnection, closeModal, save, test } = store;
 
 const activeTab = ref<"general" | "network">("general");
@@ -510,6 +623,13 @@ const showApiKey = ref(false);
 const isTesting = ref(false);
 const isSaving = ref(false);
 const testResult = ref<TestResult | null>(null);
+
+// Visible Databases state
+const selectedDatabases = ref<string[]>([]);
+const databaseInput = ref("");
+const availableDatabases = ref<DatabaseDetail[]>([]);
+const isFetchingDbs = ref(false);
+const fetchDbError = ref("");
 
 const form = ref<ConnectionConfig>({
   id: "",
@@ -616,14 +736,74 @@ watch(
       activeTab.value = "general";
       testResult.value = null;
       showApiKey.value = false;
+
+      // Populate visible databases
+      selectedDatabases.value = Array.isArray(val.databases)
+        ? val.databases.map((d) => d.trim()).filter(Boolean)
+        : [];
+      databaseInput.value = selectedDatabases.value.join(", ");
+      availableDatabases.value = [];
+      fetchDbError.value = "";
     }
   },
   { immediate: true }
 );
 
+function syncFromDatabaseInput() {
+  const parsed = databaseInput.value
+    .split(/[,;\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  selectedDatabases.value = Array.from(new Set(parsed));
+  databaseInput.value = selectedDatabases.value.join(", ");
+}
+
+function isDbSelected(name: string): boolean {
+  return selectedDatabases.value.includes(name);
+}
+
+function toggleDbSelection(name: string) {
+  if (isDbSelected(name)) {
+    selectedDatabases.value = selectedDatabases.value.filter((d) => d !== name);
+  } else {
+    selectedDatabases.value.push(name);
+  }
+  databaseInput.value = selectedDatabases.value.join(", ");
+}
+
+function selectAllDbs() {
+  selectedDatabases.value = availableDatabases.value.map((d) => d.name);
+  databaseInput.value = selectedDatabases.value.join(", ");
+}
+
+function clearAllDbs() {
+  selectedDatabases.value = [];
+  databaseInput.value = "";
+}
+
+async function onFetchDatabases() {
+  if (!form.value.url || !form.value.apiKey) return;
+  syncFromDatabaseInput();
+  isFetchingDbs.value = true;
+  fetchDbError.value = "";
+  try {
+    const fullConfig = buildFullConfig();
+    const dbs = await store.fetchDatabases(fullConfig);
+    availableDatabases.value = dbs || [];
+    if (availableDatabases.value.length === 0) {
+      fetchDbError.value = "未获取到任何数据库";
+    }
+  } catch (err: unknown) {
+    fetchDbError.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    isFetchingDbs.value = false;
+  }
+}
+
 function buildFullConfig(): ConnectionConfig {
   const config: ConnectionConfig = {
     ...form.value,
+    databases: selectedDatabases.value.length > 0 ? [...selectedDatabases.value] : [],
     proxyChain: chain.value.map((h) => ({
       ...h,
       host: h.host.trim(),
@@ -651,10 +831,14 @@ async function onSave() {
   if (!form.value.name.trim()) {
     form.value.name = form.value.url.replace(/^https?:\/\//, "");
   }
+  syncFromDatabaseInput();
   isSaving.value = true;
   try {
     const fullConfig = buildFullConfig();
     await save(fullConfig);
+    if (store.activeConnectionId.value === fullConfig.id) {
+      await vdbStore.loadDatabases(fullConfig.id);
+    }
   } finally {
     isSaving.value = false;
   }

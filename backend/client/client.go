@@ -353,6 +353,52 @@ func (c *Client) DescribeCollection(ctx context.Context, database, collection, d
 	return &meta, nil
 }
 
+func (c *Client) DropCollection(ctx context.Context, database, collection, dbType string) error {
+	// 1. If AI database, try dropping via AI CollectionView API
+	if isAIDatabase(dbType) {
+		req := AICollectionViewDropReq{Database: database, CollectionView: collection}
+		var resp ResponseHeader
+		err := c.doRequest(ctx, http.MethodPost, "/ai/collectionView/drop", req, &resp)
+		if err == nil && resp.Code == 0 {
+			return nil
+		}
+		if err != nil && !strings.Contains(err.Error(), "11100") && !strings.Contains(err.Error(), "base data") {
+			return fmt.Errorf("AI 知识库集合删除失败: %w", err)
+		}
+		if resp.Code != 0 && resp.Code != 11100 {
+			return fmt.Errorf("api error (%d): %s", resp.Code, resp.Message)
+		}
+	}
+
+	// 2. Base collection drop
+	req := DropCollectionRequest{Database: database, Collection: collection}
+	var resp DropCollectionResponse
+	err := c.doRequest(ctx, http.MethodPost, "/collection/drop", req, &resp)
+
+	// 3. If Base collection returns 11100, auto-retry AI CollectionView drop!
+	if (err != nil && (strings.Contains(err.Error(), "11100") || strings.Contains(err.Error(), "user can only handle base data"))) ||
+		(resp.Code == 11100) {
+		aiReq := AICollectionViewDropReq{Database: database, CollectionView: collection}
+		var aiResp ResponseHeader
+		if aiErr := c.doRequest(ctx, http.MethodPost, "/ai/collectionView/drop", aiReq, &aiResp); aiErr == nil && aiResp.Code == 0 {
+			return nil
+		} else if aiErr != nil {
+			return fmt.Errorf("AI 知识库集合删除失败: %w", aiErr)
+		} else if aiResp.Code != 0 {
+			return fmt.Errorf("api error (%d): %s", aiResp.Code, aiResp.Message)
+		}
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+	if resp.Code != 0 {
+		return fmt.Errorf("api error (%d): %s", resp.Code, resp.Message)
+	}
+	return nil
+}
+
 func (c *Client) QueryDocuments(ctx context.Context, database, collection, dbType string, limit, offset int, filter string) (*QueryDocumentResponse, error) {
 	if limit <= 0 {
 		limit = 20
@@ -432,4 +478,208 @@ func (c *Client) QueryDocuments(ctx context.Context, database, collection, dbTyp
 		resp.Count = uint64(len(resp.Documents))
 	}
 	return &resp, nil
+}
+
+func flattenMap(prefix string, m map[string]interface{}, out map[string]interface{}) {
+	for k, v := range m {
+		key := k
+		if prefix != "" && prefix != "metaData" && prefix != "metadata" {
+			key = prefix + "_" + k
+		}
+		if subM, ok := v.(map[string]interface{}); ok {
+			flattenMap(key, subM, out)
+		} else {
+			out[key] = v
+		}
+	}
+}
+
+// sanitizeUpdate ensures the update payload only contains supported scalar types.
+// Tencent VectorDB strictly forbids nested map[string]interface{} types (error 14100).
+// Any nested maps or objects (such as metaData: { ... }) are automatically unpacked into top-level scalar fields.
+func sanitizeUpdate(update map[string]interface{}) map[string]interface{} {
+	clean := make(map[string]interface{})
+	for k, v := range update {
+		if m, ok := v.(map[string]interface{}); ok {
+			prefix := ""
+			if k != "metaData" && k != "metadata" {
+				prefix = k
+			}
+			flattenMap(prefix, m, clean)
+		} else {
+			clean[k] = v
+		}
+	}
+	return clean
+}
+
+var aiReadOnlyFields = map[string]bool{
+	"documentsetid":            true,
+	"documentsetname":          true,
+	"document_set_id":          true,
+	"document_set_name":        true,
+	"status":                   true,
+	"filetype":                 true,
+	"file_type":                true,
+	"bytesize":                 true,
+	"byte_size":                true,
+	"bytelength":               true,
+	"byte_length":              true,
+	"chunknum":                 true,
+	"chunk_num":                true,
+	"createtime":               true,
+	"create_time":              true,
+	"updatetime":               true,
+	"update_time":              true,
+	"lastupdatetime":           true,
+	"last_update_time":         true,
+	"textprefix":               true,
+	"text_prefix":              true,
+	"text":                     true,
+	"textlength":               true,
+	"text_length":              true,
+	"indexedprogress":          true,
+	"indexed_progress":         true,
+	"indexedstatus":            true,
+	"indexed_status":           true,
+	"indexederrormsg":          true,
+	"indexed_error_msg":        true,
+	"keywords":                 true,
+	"appendtitletochunk":       true,
+	"append_title_to_chunk":    true,
+	"appendkeywordstochunk":    true,
+	"append_keywords_to_chunk": true,
+	"chunksplitter":            true,
+	"chunk_splitter":           true,
+	"splitterprocess":          true,
+	"splitter_process":         true,
+	"splitterpreprocess":       true,
+	"splitter_preprocess":      true,
+	"parsingprocess":           true,
+	"parsing_process":          true,
+	"parsingtype":              true,
+	"parsing_type":             true,
+	"metadata":                 true,
+}
+
+func filterAIRuntimeFields(update map[string]interface{}) map[string]interface{} {
+	filtered := make(map[string]interface{})
+	for k, v := range update {
+		if aiReadOnlyFields[strings.ToLower(k)] {
+			continue
+		}
+		// VectorDB AI Knowledge Base scalar fields strictly only support uint64, string, or string element array type.
+		// Passing a bool triggers error 14100: field "xxx" is unsupported bool type, only support uint64, string or string element array type.
+		// Automatically coerce bool to uint64: true -> 1, false -> 0.
+		if b, ok := v.(bool); ok {
+			if b {
+				filtered[k] = uint64(1)
+			} else {
+				filtered[k] = uint64(0)
+			}
+			continue
+		}
+		// If float64 has no fractional part and is non-negative, cast to uint64
+		if f, ok := v.(float64); ok && f >= 0 && f == float64(uint64(f)) {
+			filtered[k] = uint64(f)
+			continue
+		}
+		filtered[k] = v
+	}
+	return filtered
+}
+
+func (c *Client) UpdateDocument(ctx context.Context, database, collection, dbType string, query UpdateDocumentQuery, update map[string]interface{}) error {
+	cleanUpdate := sanitizeUpdate(update)
+	if len(cleanUpdate) == 0 {
+		return fmt.Errorf("更新字段内容不能为空")
+	}
+
+	// 1. Explicit AI CollectionView / DocumentSet update
+	if dbType == "ai" {
+		aiUpdate := filterAIRuntimeFields(cleanUpdate)
+		if len(aiUpdate) == 0 {
+			return fmt.Errorf("未检测到可更新的自定义字段（文件名 documentSetName、状态 status 等系统内置属性由知识库自动维护，不可修改）")
+		}
+
+		aiReq := AIDocumentSetUpdateReq{
+			Database:       database,
+			CollectionView: collection,
+			Update:         aiUpdate,
+		}
+		if len(query.DocumentSetIds) > 0 {
+			aiReq.Query.DocumentSetId = query.DocumentSetIds
+			aiReq.Query.DocumentSetIds = query.DocumentSetIds
+		} else if len(query.DocumentIds) > 0 {
+			aiReq.Query.DocumentSetId = query.DocumentIds
+			aiReq.Query.DocumentSetIds = query.DocumentIds
+		}
+		if len(query.DocumentSetNames) > 0 {
+			aiReq.Query.DocumentSetNames = query.DocumentSetNames
+		}
+		aiReq.Query.Filter = query.Filter
+
+		var resp UpdateDocumentResponse
+		if err := c.doRequest(ctx, http.MethodPost, "/ai/documentSet/update", aiReq, &resp); err != nil {
+			return fmt.Errorf("AI 知识库文档更新失败: %w", err)
+		}
+		if resp.Code != 0 {
+			return fmt.Errorf("AI 知识库更新失败 (%d): %s", resp.Code, resp.Message)
+		}
+		return nil
+	}
+
+	// 2. Base Collection document update
+	req := UpdateDocumentRequest{
+		Database:   database,
+		Collection: collection,
+		Query:      query,
+		Update:     cleanUpdate,
+	}
+	var resp UpdateDocumentResponse
+	err := c.doRequest(ctx, http.MethodPost, "/document/update", req, &resp)
+
+	// 3. If Base returns 11100, auto-retry AI DocumentSet update!
+	if (err != nil && (strings.Contains(err.Error(), "11100") || strings.Contains(err.Error(), "user can only handle base data"))) ||
+		(resp.Code == 11100) {
+		aiUpdate := filterAIRuntimeFields(cleanUpdate)
+		if len(aiUpdate) == 0 {
+			return fmt.Errorf("未检测到可更新的自定义字段（文件名 documentSetName、状态 status 等系统内置属性由知识库自动维护，不可修改）")
+		}
+
+		aiReq := AIDocumentSetUpdateReq{
+			Database:       database,
+			CollectionView: collection,
+			Update:         aiUpdate,
+		}
+		if len(query.DocumentSetIds) > 0 {
+			aiReq.Query.DocumentSetId = query.DocumentSetIds
+			aiReq.Query.DocumentSetIds = query.DocumentSetIds
+		} else if len(query.DocumentIds) > 0 {
+			aiReq.Query.DocumentSetId = query.DocumentIds
+			aiReq.Query.DocumentSetIds = query.DocumentIds
+		}
+		if len(query.DocumentSetNames) > 0 {
+			aiReq.Query.DocumentSetNames = query.DocumentSetNames
+		}
+		aiReq.Query.Filter = query.Filter
+
+		var aiResp UpdateDocumentResponse
+		if aiErr := c.doRequest(ctx, http.MethodPost, "/ai/documentSet/update", aiReq, &aiResp); aiErr == nil && aiResp.Code == 0 {
+			return nil
+		} else if aiErr != nil {
+			return fmt.Errorf("AI 知识库更新失败: %w", aiErr)
+		} else if aiResp.Code != 0 {
+			return fmt.Errorf("AI 知识库更新失败 (%d): %s", aiResp.Code, aiResp.Message)
+		}
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+	if resp.Code != 0 {
+		return fmt.Errorf("api error (%d): %s", resp.Code, resp.Message)
+	}
+	return nil
 }
