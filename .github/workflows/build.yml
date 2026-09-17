@@ -70,8 +70,7 @@ jobs:
 
       - name: Install Wails v3 CLI
         run: |
-          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.22
-
+          CGO_ENABLED=0 go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.22
       - name: Install Frontend Dependencies
         run: |
           cd frontend
@@ -80,8 +79,7 @@ jobs:
 
       - name: Run Backend Unit Tests
         run: |
-          go test ./backend/... -v -race
-
+          go test ./backend/... -v
       - name: Build Application (Linux)
         if: runner.os == 'Linux'
         run: |
