@@ -12,8 +12,34 @@ export interface ConnectionConfig {
      * in seconds
      */
     "timeout": number;
+    "proxyChain"?: NetworkHop[] | null;
     "proxy"?: ProxyConfig;
     "sshTunnel"?: SSHTunnelConfig;
+}
+
+export interface NetworkHop {
+    "id": string;
+    "enabled": boolean;
+
+    /**
+     * "http", "socks5", "ssh"
+     */
+    "type": string;
+    "host": string;
+    "port": number;
+
+    /**
+     * proxy username or ssh user
+     */
+    "username"?: string;
+    "password"?: string;
+
+    /**
+     * for ssh: "password", "key"
+     */
+    "authType"?: string;
+    "privateKey"?: string;
+    "passphrase"?: string;
 }
 
 export interface ProxyConfig {

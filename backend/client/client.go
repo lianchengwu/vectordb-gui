@@ -19,12 +19,14 @@ type Client struct {
 	username   string
 	apiKey     string
 	httpClient *http.Client
-	sshClient  *ssh.Client
+	sshClients []*ssh.Client
 }
 
 func (c *Client) Close() error {
-	if c.sshClient != nil {
-		return c.sshClient.Close()
+	for _, cli := range c.sshClients {
+		if cli != nil {
+			_ = cli.Close()
+		}
 	}
 	return nil
 }
@@ -38,7 +40,34 @@ func NewClientWithConfig(cfg storage.ConnectionConfig, timeout time.Duration) (*
 		u = "http://" + u
 	}
 
-	httpCli, sshCli, err := BuildHTTPClient(timeout, cfg.Proxy, cfg.SSHTunnel)
+	chain := cfg.ProxyChain
+	if len(chain) == 0 {
+		if cfg.Proxy.Enabled && strings.TrimSpace(cfg.Proxy.Host) != "" {
+			chain = append(chain, storage.NetworkHop{
+				Enabled:  true,
+				Type:     cfg.Proxy.Type,
+				Host:     cfg.Proxy.Host,
+				Port:     cfg.Proxy.Port,
+				Username: cfg.Proxy.Username,
+				Password: cfg.Proxy.Password,
+			})
+		}
+		if cfg.SSHTunnel.Enabled && strings.TrimSpace(cfg.SSHTunnel.Host) != "" {
+			chain = append(chain, storage.NetworkHop{
+				Enabled:    true,
+				Type:       "ssh",
+				Host:       cfg.SSHTunnel.Host,
+				Port:       cfg.SSHTunnel.Port,
+				Username:   cfg.SSHTunnel.User,
+				AuthType:   cfg.SSHTunnel.AuthType,
+				Password:   cfg.SSHTunnel.Password,
+				PrivateKey: cfg.SSHTunnel.PrivateKey,
+				Passphrase: cfg.SSHTunnel.Passphrase,
+			})
+		}
+	}
+
+	httpCli, sshClis, err := BuildChainedHTTPClient(timeout, chain)
 	if err != nil {
 		return nil, err
 	}
@@ -53,10 +82,9 @@ func NewClientWithConfig(cfg storage.ConnectionConfig, timeout time.Duration) (*
 		username:   username,
 		apiKey:     cfg.APIKey,
 		httpClient: httpCli,
-		sshClient:  sshCli,
+		sshClients: sshClis,
 	}, nil
 }
-
 func NewClient(rawURL, username, apiKey string, timeout time.Duration) *Client {
 	cfg := storage.ConnectionConfig{
 		URL:      rawURL,

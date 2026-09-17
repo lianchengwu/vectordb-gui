@@ -1,7 +1,9 @@
 package client
 
 import (
+	"bufio"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/http"
@@ -16,9 +18,23 @@ import (
 	"vectordb-1/backend/storage"
 )
 
-// BuildHTTPClient creates an http.Client configured with optional HTTP/SOCKS5 proxy or SSH tunnel.
-// If an SSH tunnel is established, it returns the *ssh.Client which the caller must close when done.
-func BuildHTTPClient(timeout time.Duration, proxyCfg storage.ProxyConfig, sshCfg storage.SSHTunnelConfig) (*http.Client, *ssh.Client, error) {
+type dialerContextFunc func(ctx context.Context, network, addr string) (net.Conn, error)
+
+type customProxyDialer struct {
+	dialContext dialerContextFunc
+}
+
+func (d *customProxyDialer) Dial(network, addr string) (net.Conn, error) {
+	return d.dialContext(context.Background(), network, addr)
+}
+
+func (d *customProxyDialer) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	return d.dialContext(ctx, network, addr)
+}
+
+// BuildChainedHTTPClient builds an http.Client supporting arbitrary user-defined multi-hop proxy chains:
+// e.g. Client ➔ [HTTP Proxy] ➔ [SOCKS5 Proxy] ➔ [SSH Jump Host] ➔ ... ➔ Target VectorDB.
+func BuildChainedHTTPClient(timeout time.Duration, chain []storage.NetworkHop) (*http.Client, []*ssh.Client, error) {
 	if timeout <= 0 {
 		timeout = 10 * time.Second
 	}
@@ -29,138 +45,211 @@ func BuildHTTPClient(timeout time.Duration, proxyCfg storage.ProxyConfig, sshCfg
 		IdleConnTimeout:     90 * time.Second,
 	}
 
-	var sshClient *ssh.Client
+	baseDialer := &net.Dialer{
+		Timeout:   15 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	currentDialer := baseDialer.DialContext
+	var sshClients []*ssh.Client
 
-	// 1. SSH Tunnel takes precedence if enabled
-	if sshCfg.Enabled && sshCfg.Host != "" {
-		port := sshCfg.Port
-		if port <= 0 {
-			port = 22
-		}
-		user := sshCfg.User
-		if user == "" {
-			user = "root"
-		}
-
-		var authMethods []ssh.AuthMethod
-		if sshCfg.AuthType == "key" && sshCfg.PrivateKey != "" {
-			keyBytes := []byte(sshCfg.PrivateKey)
-			// Check if PrivateKey is a file path
-			if _, err := os.Stat(strings.TrimSpace(sshCfg.PrivateKey)); err == nil {
-				if fileData, err := os.ReadFile(strings.TrimSpace(sshCfg.PrivateKey)); err == nil {
-					keyBytes = fileData
-				}
-			}
-
-			var signer ssh.Signer
-			var err error
-			if sshCfg.Passphrase != "" {
-				signer, err = ssh.ParsePrivateKeyWithPassphrase(keyBytes, []byte(sshCfg.Passphrase))
-			} else {
-				signer, err = ssh.ParsePrivateKey(keyBytes)
-			}
-			if err != nil {
-				return nil, nil, fmt.Errorf("解析 SSH 私钥失败: %w", err)
-			}
-			authMethods = append(authMethods, ssh.PublicKeys(signer))
-		} else if sshCfg.Password != "" {
-			authMethods = append(authMethods, ssh.Password(sshCfg.Password))
+	for i, hop := range chain {
+		if !hop.Enabled || strings.TrimSpace(hop.Host) == "" {
+			continue
 		}
 
-		clientConfig := &ssh.ClientConfig{
-			User:            user,
-			Auth:            authMethods,
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-			Timeout:         15 * time.Second,
-		}
-
-		sshAddr := net.JoinHostPort(sshCfg.Host, strconv.Itoa(port))
-		client, err := ssh.Dial("tcp", sshAddr, clientConfig)
-		if err != nil {
-			return nil, nil, fmt.Errorf("连接 SSH 跳板机 (%s) 失败: %w", sshAddr, err)
-		}
-		sshClient = client
-
-		// Route all HTTP requests through the SSH tunnel
-		transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-			type dialResult struct {
-				conn net.Conn
-				err  error
-			}
-			done := make(chan dialResult, 1)
-
-			go func() {
-				conn, err := client.Dial(network, addr)
-				done <- dialResult{conn: conn, err: err}
-			}()
-
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			case res := <-done:
-				return res.conn, res.err
-			}
-		}
-
-	} else if proxyCfg.Enabled && proxyCfg.Host != "" {
-		port := proxyCfg.Port
-		if port <= 0 {
-			if proxyCfg.Type == "socks5" {
-				port = 1080
-			} else {
-				port = 8080
-			}
-		}
-
-		switch strings.ToLower(proxyCfg.Type) {
+		port := hop.Port
+		switch strings.ToLower(hop.Type) {
 		case "socks5":
-			var auth *proxy.Auth
-			if proxyCfg.Username != "" {
-				auth = &proxy.Auth{
-					User:     proxyCfg.Username,
-					Password: proxyCfg.Password,
-				}
+			if port <= 0 {
+				port = 1080
 			}
-			socksAddr := net.JoinHostPort(proxyCfg.Host, strconv.Itoa(port))
-			dialer, err := proxy.SOCKS5("tcp", socksAddr, auth, proxy.Direct)
-			if err != nil {
-				return nil, nil, fmt.Errorf("创建 SOCKS5 代理客户端失败: %w", err)
+			socksAddr := net.JoinHostPort(strings.TrimSpace(hop.Host), strconv.Itoa(port))
+			var auth *proxy.Auth
+			if hop.Username != "" {
+				auth = &proxy.Auth{User: hop.Username, Password: hop.Password}
 			}
 
-			if contextDialer, ok := dialer.(proxy.ContextDialer); ok {
-				transport.DialContext = contextDialer.DialContext
-			} else {
-				transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-					return dialer.Dial(network, addr)
+			underlyingDialer := currentDialer
+			socksDialer, err := proxy.SOCKS5("tcp", socksAddr, auth, &customProxyDialer{dialContext: underlyingDialer})
+			if err != nil {
+				return nil, sshClients, fmt.Errorf("第 %d 节点 (SOCKS5 %s) 初始化失败: %w", i+1, socksAddr, err)
+			}
+
+			currentDialer = func(ctx context.Context, network, addr string) (net.Conn, error) {
+				if cd, ok := socksDialer.(proxy.ContextDialer); ok {
+					return cd.DialContext(ctx, network, addr)
 				}
+				return socksDialer.Dial(network, addr)
 			}
 
 		case "http", "https":
-			proxyURL := &url.URL{
-				Scheme: strings.ToLower(proxyCfg.Type),
-				Host:   net.JoinHostPort(proxyCfg.Host, strconv.Itoa(port)),
+			if port <= 0 {
+				port = 8080
 			}
-			if proxyCfg.Username != "" {
-				proxyURL.User = url.UserPassword(proxyCfg.Username, proxyCfg.Password)
+			proxyAddr := net.JoinHostPort(strings.TrimSpace(hop.Host), strconv.Itoa(port))
+			prevDialer := currentDialer
+			username := hop.Username
+			password := hop.Password
+
+			currentDialer = func(ctx context.Context, network, addr string) (net.Conn, error) {
+				conn, err := prevDialer(ctx, "tcp", proxyAddr)
+				if err != nil {
+					return nil, fmt.Errorf("连接第 %d 节点 (HTTP 代理 %s) 失败: %w", i+1, proxyAddr, err)
+				}
+
+				req := &http.Request{
+					Method: http.MethodConnect,
+					URL:    &url.URL{Opaque: addr},
+					Host:   addr,
+					Header: make(http.Header),
+				}
+				if username != "" {
+					auth := username + ":" + password
+					basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(auth))
+					req.Header.Set("Proxy-Authorization", basicAuth)
+				}
+
+				if err := req.Write(conn); err != nil {
+					conn.Close()
+					return nil, fmt.Errorf("向第 %d 节点 (HTTP 代理 %s) 发送握手失败: %w", i+1, proxyAddr, err)
+				}
+
+				resp, err := http.ReadResponse(bufio.NewReader(conn), req)
+				if err != nil {
+					conn.Close()
+					return nil, fmt.Errorf("读取第 %d 节点 (HTTP 代理 %s) 响应失败: %w", i+1, proxyAddr, err)
+				}
+				if resp.StatusCode != http.StatusOK {
+					conn.Close()
+					return nil, fmt.Errorf("第 %d 节点 (HTTP 代理 %s) 拒绝连接目标 (%s): %s", i+1, proxyAddr, addr, resp.Status)
+				}
+				return conn, nil
 			}
-			transport.Proxy = http.ProxyURL(proxyURL)
+
+		case "ssh":
+			if port <= 0 {
+				port = 22
+			}
+			user := strings.TrimSpace(hop.Username)
+			if user == "" {
+				user = "root"
+			}
+
+			var authMethods []ssh.AuthMethod
+			if hop.AuthType == "key" && strings.TrimSpace(hop.PrivateKey) != "" {
+				keyBytes := []byte(hop.PrivateKey)
+				if _, err := os.Stat(strings.TrimSpace(hop.PrivateKey)); err == nil {
+					if fileData, err := os.ReadFile(strings.TrimSpace(hop.PrivateKey)); err == nil {
+						keyBytes = fileData
+					}
+				}
+
+				var signer ssh.Signer
+				var err error
+				if hop.Passphrase != "" {
+					signer, err = ssh.ParsePrivateKeyWithPassphrase(keyBytes, []byte(hop.Passphrase))
+				} else {
+					signer, err = ssh.ParsePrivateKey(keyBytes)
+				}
+				if err != nil {
+					return nil, sshClients, fmt.Errorf("第 %d 节点 (SSH) 私钥解析失败: %w", i+1, err)
+				}
+				authMethods = append(authMethods, ssh.PublicKeys(signer))
+			} else if hop.Password != "" {
+				authMethods = append(authMethods, ssh.Password(hop.Password))
+			}
+
+			clientConfig := &ssh.ClientConfig{
+				User:            user,
+				Auth:            authMethods,
+				HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+				Timeout:         15 * time.Second,
+			}
+
+			sshHostPort := net.JoinHostPort(strings.TrimSpace(hop.Host), strconv.Itoa(port))
+
+			dialCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			netConn, err := currentDialer(dialCtx, "tcp", sshHostPort)
+			cancel()
+			if err != nil {
+				return nil, sshClients, fmt.Errorf("连接第 %d 节点 (SSH 跳板机 %s) 失败: %w", i+1, sshHostPort, err)
+			}
+
+			clientConn, chans, reqs, err := ssh.NewClientConn(netConn, sshHostPort, clientConfig)
+			if err != nil {
+				netConn.Close()
+				return nil, sshClients, fmt.Errorf("第 %d 节点 (SSH %s) 握手鉴权失败: %w", i+1, sshHostPort, err)
+			}
+
+			client := ssh.NewClient(clientConn, chans, reqs)
+			sshClients = append(sshClients, client)
+
+			currentDialer = func(ctx context.Context, network, addr string) (net.Conn, error) {
+				type dialResult struct {
+					conn net.Conn
+					err  error
+				}
+				done := make(chan dialResult, 1)
+
+				go func() {
+					conn, err := client.Dial(network, addr)
+					done <- dialResult{conn: conn, err: err}
+				}()
+
+				select {
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				case res := <-done:
+					return res.conn, res.err
+				}
+			}
 
 		default:
-			return nil, nil, fmt.Errorf("不支持的代理类型: %s", proxyCfg.Type)
+			return nil, sshClients, fmt.Errorf("不支持的网络节点类型: %s", hop.Type)
 		}
-	} else {
-		// Default standard direct dialer
-		transport.Proxy = http.ProxyFromEnvironment
-		transport.DialContext = (&net.Dialer{
-			Timeout:   10 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext
 	}
+
+	transport.DialContext = currentDialer
 
 	httpClient := &http.Client{
 		Timeout:   timeout,
 		Transport: transport,
 	}
 
-	return httpClient, sshClient, nil
+	return httpClient, sshClients, nil
+}
+
+// BuildHTTPClient maintains backward compatibility with legacy dual-field config.
+func BuildHTTPClient(timeout time.Duration, proxyCfg storage.ProxyConfig, sshCfg storage.SSHTunnelConfig) (*http.Client, *ssh.Client, error) {
+	var chain []storage.NetworkHop
+	if proxyCfg.Enabled && strings.TrimSpace(proxyCfg.Host) != "" {
+		chain = append(chain, storage.NetworkHop{
+			Enabled:  true,
+			Type:     proxyCfg.Type,
+			Host:     proxyCfg.Host,
+			Port:     proxyCfg.Port,
+			Username: proxyCfg.Username,
+			Password: proxyCfg.Password,
+		})
+	}
+	if sshCfg.Enabled && strings.TrimSpace(sshCfg.Host) != "" {
+		chain = append(chain, storage.NetworkHop{
+			Enabled:    true,
+			Type:       "ssh",
+			Host:       sshCfg.Host,
+			Port:       sshCfg.Port,
+			Username:   sshCfg.User,
+			AuthType:   sshCfg.AuthType,
+			Password:   sshCfg.Password,
+			PrivateKey: sshCfg.PrivateKey,
+			Passphrase: sshCfg.Passphrase,
+		})
+	}
+
+	httpClient, sshClients, err := BuildChainedHTTPClient(timeout, chain)
+	var singleSSH *ssh.Client
+	if len(sshClients) > 0 {
+		singleSSH = sshClients[0]
+	}
+	return httpClient, singleSSH, err
 }

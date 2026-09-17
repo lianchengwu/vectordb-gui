@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 	"vectordb-1/backend/client"
@@ -77,7 +78,7 @@ func (s *VectorDBService) getClient(connID string) (*client.Client, error) {
 	entry, ok := s.clients[connID]
 	s.mu.RUnlock()
 
-	if ok && entry.config == *target {
+	if ok && reflect.DeepEqual(entry.config, *target) {
 		return entry.client, nil
 	}
 

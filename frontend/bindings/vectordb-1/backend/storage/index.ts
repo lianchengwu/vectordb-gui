@@ -3,6 +3,7 @@
 
 export type {
     ConnectionConfig,
+    NetworkHop,
     ProxyConfig,
     SSHTunnelConfig
 } from "./models.js";

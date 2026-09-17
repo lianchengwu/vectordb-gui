@@ -27,15 +27,29 @@ type SSHTunnelConfig struct {
 	Passphrase string `json:"passphrase,omitempty"`
 }
 
+type NetworkHop struct {
+	ID         string `json:"id"`
+	Enabled    bool   `json:"enabled"`
+	Type       string `json:"type"` // "http", "socks5", "ssh"
+	Host       string `json:"host"`
+	Port       int    `json:"port"`
+	Username   string `json:"username,omitempty"` // proxy username or ssh user
+	Password   string `json:"password,omitempty"`
+	AuthType   string `json:"authType,omitempty"` // for ssh: "password", "key"
+	PrivateKey string `json:"privateKey,omitempty"`
+	Passphrase string `json:"passphrase,omitempty"`
+}
+
 type ConnectionConfig struct {
-	ID        string          `json:"id"`
-	Name      string          `json:"name"`
-	URL       string          `json:"url"`
-	Username  string          `json:"username"`
-	APIKey    string          `json:"apiKey"`
-	Timeout   int             `json:"timeout"` // in seconds
-	Proxy     ProxyConfig     `json:"proxy,omitempty"`
-	SSHTunnel SSHTunnelConfig `json:"sshTunnel,omitempty"`
+	ID         string          `json:"id"`
+	Name       string          `json:"name"`
+	URL        string          `json:"url"`
+	Username   string          `json:"username"`
+	APIKey     string          `json:"apiKey"`
+	Timeout    int             `json:"timeout"` // in seconds
+	ProxyChain []NetworkHop    `json:"proxyChain,omitempty"`
+	Proxy      ProxyConfig     `json:"proxy,omitempty"`
+	SSHTunnel  SSHTunnelConfig `json:"sshTunnel,omitempty"`
 }
 
 type Storage struct {

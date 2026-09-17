@@ -3,7 +3,7 @@
     v-if="isModalOpen"
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in"
   >
-    <div class="w-full max-w-xl max-h-[90vh] rounded-xl bg-white border border-slate-200 shadow-2xl overflow-hidden flex flex-col text-slate-800 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 transition-colors duration-200">
+    <div class="w-full max-w-2xl max-h-[92vh] rounded-xl bg-white border border-slate-200 shadow-2xl overflow-hidden flex flex-col text-slate-800 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 transition-colors duration-200">
       <!-- Header -->
       <div class="px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
         <h3 class="text-base font-semibold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
@@ -44,11 +44,13 @@
           ]"
         >
           <Network class="w-3.5 h-3.5" />
-          网络代理 & SSH 隧道
+          网络链路拓扑 (代理链 / 隧道链)
           <span
-            v-if="networkMode !== 'direct'"
-            class="w-2 h-2 rounded-full bg-blue-500 inline-block"
-          ></span>
+            v-if="enabledHopsCount > 0"
+            class="px-1.5 py-0.2 rounded-full text-[9px] bg-blue-600 text-white font-mono"
+          >
+            {{ enabledHopsCount }}
+          </span>
         </button>
       </div>
 
@@ -130,186 +132,292 @@
           </div>
         </div>
 
-        <!-- NETWORK & PROXY TAB -->
+        <!-- NETWORK CHAIN TAB (Multi-Hop User-Defined Chain) -->
         <div v-show="activeTab === 'network'" class="space-y-4">
-          <!-- Mode Selection -->
-          <div>
-            <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1.5">网络通路模式</label>
-            <div class="grid grid-cols-4 gap-1.5 p-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px]">
+          <!-- Dynamic Pipeline Breadcrumb Banner -->
+          <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/50 shadow-inner">
+            <div class="text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-2 flex items-center justify-between">
+              <span class="flex items-center gap-1.5">
+                <Network class="w-3.5 h-3.5 text-blue-500" />
+                <span>当前网络链路 (自左向右依次穿透)</span>
+              </span>
+              <span class="text-[10px] text-slate-400 font-mono">
+                共 {{ enabledHopsCount }} 个有效穿透节点
+              </span>
+            </div>
+
+            <!-- Pipeline Chain Display -->
+            <div class="flex items-center gap-1.5 text-[11px] font-mono flex-wrap">
+              <span class="px-2 py-1 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">本机</span>
+              <span class="text-slate-400">➔</span>
+
+              <template v-for="(hop, idx) in chain" :key="hop.id">
+                <template v-if="hop.enabled && hop.host">
+                  <span
+                    :class="[
+                      'px-2 py-1 rounded border font-semibold flex items-center gap-1 shadow-sm',
+                      hop.type === 'ssh'
+                        ? 'bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-950/70 dark:border-purple-700/60 dark:text-purple-300'
+                        : hop.type === 'socks5'
+                        ? 'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-950/70 dark:border-cyan-700/60 dark:text-cyan-300'
+                        : 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950/70 dark:border-blue-700/60 dark:text-blue-300'
+                    ]"
+                  >
+                    <span>#{{ idx + 1 }} {{ hop.type.toUpperCase() }}</span>
+                    <span class="text-[9px] font-normal opacity-80 truncate max-w-[100px]">({{ hop.host }})</span>
+                  </span>
+                  <span class="text-slate-400">➔</span>
+                </template>
+              </template>
+
+              <span v-if="enabledHopsCount === 0" class="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300 text-[10px]">
+                直接连通 (无代理)
+              </span>
+              <span v-if="enabledHopsCount === 0" class="text-slate-400">➔</span>
+
+              <span class="px-2 py-1 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold truncate max-w-[140px]" :title="form.url || '目标 VectorDB'">
+                {{ form.url ? form.url.replace(/^https?:\/\//, '') : '目标 VectorDB' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Add Hop Toolbar -->
+          <div class="flex items-center justify-between">
+            <span class="font-medium text-slate-700 dark:text-slate-300 text-xs">代理 & 隧道节点列表</span>
+            <div class="flex items-center gap-1.5">
               <button
                 type="button"
-                @click="networkMode = 'direct'"
-                :class="[
-                  'py-1.5 rounded-md font-medium transition text-center',
-                  networkMode === 'direct'
-                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white',
-                ]"
+                @click="addHop('http')"
+                class="px-2.5 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-750 dark:text-slate-200 transition text-[11px] font-medium flex items-center gap-1 shadow-sm"
               >
-                直连
+                <Plus class="w-3 h-3 text-blue-500" />
+                + HTTP 代理
               </button>
               <button
                 type="button"
-                @click="networkMode = 'http'"
-                :class="[
-                  'py-1.5 rounded-md font-medium transition text-center',
-                  networkMode === 'http'
-                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white',
-                ]"
+                @click="addHop('socks5')"
+                class="px-2.5 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-750 dark:text-slate-200 transition text-[11px] font-medium flex items-center gap-1 shadow-sm"
               >
-                HTTP 代理
+                <Plus class="w-3 h-3 text-cyan-500" />
+                + SOCKS5 代理
               </button>
               <button
                 type="button"
-                @click="networkMode = 'socks5'"
-                :class="[
-                  'py-1.5 rounded-md font-medium transition text-center',
-                  networkMode === 'socks5'
-                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white',
-                ]"
+                @click="addHop('ssh')"
+                class="px-2.5 py-1 rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-750 dark:text-slate-200 transition text-[11px] font-medium flex items-center gap-1 shadow-sm"
               >
-                SOCKS5 代理
-              </button>
-              <button
-                type="button"
-                @click="networkMode = 'ssh'"
-                :class="[
-                  'py-1.5 rounded-md font-medium transition text-center',
-                  networkMode === 'ssh'
-                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white',
-                ]"
-              >
-                SSH 隧道 (跳板机)
+                <Plus class="w-3 h-3 text-purple-500" />
+                + SSH 隧道
               </button>
             </div>
           </div>
 
-          <!-- Direct Info -->
-          <div v-if="networkMode === 'direct'" class="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 text-xs">
-            <p>使用本机网络直接访问目标 VectorDB 实例地址（适用于拥有公网 IP 或直通专线/VPN 的场景）。</p>
+          <!-- Empty Chain State -->
+          <div
+            v-if="chain.length === 0"
+            class="p-6 text-center rounded-xl border border-dashed border-slate-300 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 text-slate-400"
+          >
+            <p class="text-xs">暂无配置代理/隧道节点，当前为直连模式。</p>
+            <p class="text-[11px] text-slate-500 mt-1">如需多层穿透，可点击右上角按钮自由添加 HTTP、SOCKS5 代理或 SSH 跳板机并任意调整顺序。</p>
           </div>
 
-          <!-- HTTP / SOCKS5 Proxy Form -->
-          <div v-if="networkMode === 'http' || networkMode === 'socks5'" class="space-y-3 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-            <div class="grid grid-cols-3 gap-3">
-              <div class="col-span-2">
-                <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">代理服务器主机 (Host) <span class="text-rose-500">*</span></label>
-                <input
-                  v-model="proxyForm.host"
-                  type="text"
-                  placeholder="127.0.0.1 或 proxy.corp.internal"
-                  class="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">端口 (Port)</label>
-                <input
-                  v-model.number="proxyForm.port"
-                  type="number"
-                  :placeholder="networkMode === 'socks5' ? '1080' : '8080'"
-                  class="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-            </div>
+          <!-- Hop Cards List -->
+          <div v-else class="space-y-3">
+            <div
+              v-for="(hop, index) in chain"
+              :key="hop.id"
+              class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 shadow-sm overflow-hidden transition"
+            >
+              <!-- Card Header -->
+              <div class="px-4 py-2.5 bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <!-- Enable/Disable Checkbox -->
+                  <input
+                    type="checkbox"
+                    v-model="hop.enabled"
+                    class="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    title="启用/禁用该节点"
+                  />
 
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">用户名 (可选)</label>
-                <input
-                  v-model="proxyForm.username"
-                  type="text"
-                  placeholder="代理账号"
-                  class="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">密码 (可选)</label>
-                <input
-                  v-model="proxyForm.password"
-                  type="password"
-                  placeholder="代理密码"
-                  class="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          </div>
+                  <!-- Sequence Number and Type Badge -->
+                  <span class="font-mono font-bold text-xs text-slate-500 dark:text-slate-400">#{{ index + 1 }}</span>
+                  <span
+                    :class="[
+                      'px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider',
+                      hop.type === 'ssh'
+                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-800'
+                        : hop.type === 'socks5'
+                        ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800'
+                        : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800'
+                    ]"
+                  >
+                    {{ hop.type === 'ssh' ? 'SSH 跳板机' : `${hop.type.toUpperCase()} 代理` }}
+                  </span>
 
-          <!-- SSH Tunnel Form -->
-          <div v-if="networkMode === 'ssh'" class="space-y-3 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-            <div class="grid grid-cols-3 gap-3">
-              <div class="col-span-2">
-                <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">跳板机地址 (SSH Host) <span class="text-rose-500">*</span></label>
-                <input
-                  v-model="sshForm.host"
-                  type="text"
-                  placeholder="123.x.x.x 或 bastion.example.com"
-                  class="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">端口 (Port)</label>
-                <input
-                  v-model.number="sshForm.port"
-                  type="number"
-                  placeholder="22"
-                  class="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-            </div>
+                  <span v-if="hop.host" class="text-xs text-slate-600 dark:text-slate-400 font-mono truncate max-w-[200px]">
+                    {{ hop.host }}:{{ hop.port }}
+                  </span>
+                </div>
 
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">SSH 用户名 <span class="text-rose-500">*</span></label>
-                <input
-                  v-model="sshForm.user"
-                  type="text"
-                  placeholder="例如: root / ubuntu"
-                  class="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">认证方式</label>
-                <select
-                  v-model="sshForm.authType"
-                  class="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none"
-                >
-                  <option value="password">账号密码 (Password)</option>
-                  <option value="key">私钥文件 / 内容 (Private Key)</option>
-                </select>
-              </div>
-            </div>
+                <!-- Reorder and Delete Toolbar -->
+                <div class="flex items-center gap-1">
+                  <!-- Move Up -->
+                  <button
+                    type="button"
+                    @click="moveHop(index, -1)"
+                    :disabled="index === 0"
+                    class="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+                    title="上移顺序 (往前穿透)"
+                  >
+                    <ArrowUp class="w-3.5 h-3.5" />
+                  </button>
 
-            <div v-if="sshForm.authType === 'password'">
-              <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">SSH 密码 <span class="text-rose-500">*</span></label>
-              <input
-                v-model="sshForm.password"
-                type="password"
-                placeholder="跳板机登录密码"
-                class="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
-              />
-            </div>
+                  <!-- Move Down -->
+                  <button
+                    type="button"
+                    @click="moveHop(index, 1)"
+                    :disabled="index === chain.length - 1"
+                    class="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+                    title="下移顺序 (往后穿透)"
+                  >
+                    <ArrowDown class="w-3.5 h-3.5" />
+                  </button>
 
-            <div v-if="sshForm.authType === 'key'" class="space-y-2">
-              <div>
-                <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">私钥 (文件路径 或 PEM 文本) <span class="text-rose-500">*</span></label>
-                <textarea
-                  v-model="sshForm.privateKey"
-                  rows="3"
-                  placeholder="~/.ssh/id_rsa 或直接粘贴 -----BEGIN OPENSSH PRIVATE KEY-----"
-                  class="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-[11px] font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
-                ></textarea>
+                  <!-- Delete -->
+                  <button
+                    type="button"
+                    @click="removeHop(index)"
+                    class="p-1 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition ml-1"
+                    title="移除该节点"
+                  >
+                    <Trash2 class="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
-              <div>
-                <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">私钥密码 (Passphrase，可选)</label>
-                <input
-                  v-model="sshForm.passphrase"
-                  type="password"
-                  placeholder="若私钥被加密保护请输入密码"
-                  class="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
-                />
+
+              <!-- Card Form Content -->
+              <div v-show="hop.enabled" class="p-4 space-y-3">
+                <!-- HTTP / SOCKS5 Inputs -->
+                <template v-if="hop.type === 'http' || hop.type === 'socks5'">
+                  <div class="grid grid-cols-3 gap-3">
+                    <div class="col-span-2">
+                      <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">代理主机 (Host) <span class="text-rose-500">*</span></label>
+                      <input
+                        v-model="hop.host"
+                        type="text"
+                        placeholder="127.0.0.1 或 proxy.internal"
+                        class="w-full px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">端口 (Port)</label>
+                      <input
+                        v-model.number="hop.port"
+                        type="number"
+                        :placeholder="hop.type === 'socks5' ? '1080' : '8080'"
+                        class="w-full px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">代理账号 (可选)</label>
+                      <input
+                        v-model="hop.username"
+                        type="text"
+                        placeholder="账号"
+                        class="w-full px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">代理密码 (可选)</label>
+                      <input
+                        v-model="hop.password"
+                        type="password"
+                        placeholder="密码"
+                        class="w-full px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </template>
+
+                <!-- SSH Tunnel Inputs -->
+                <template v-if="hop.type === 'ssh'">
+                  <div class="grid grid-cols-3 gap-3">
+                    <div class="col-span-2">
+                      <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">跳板机主机 (Host) <span class="text-rose-500">*</span></label>
+                      <input
+                        v-model="hop.host"
+                        type="text"
+                        placeholder="123.x.x.x 或 bastion.example.com"
+                        class="w-full px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">端口 (Port)</label>
+                      <input
+                        v-model.number="hop.port"
+                        type="number"
+                        placeholder="22"
+                        class="w-full px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">SSH 用户名 <span class="text-rose-500">*</span></label>
+                      <input
+                        v-model="hop.username"
+                        type="text"
+                        placeholder="例如: root / ubuntu"
+                        class="w-full px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">认证方式</label>
+                      <select
+                        v-model="hop.authType"
+                        class="w-full px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none"
+                      >
+                        <option value="password">账号密码 (Password)</option>
+                        <option value="key">私钥文件 / 内容 (Private Key)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div v-if="hop.authType === 'password'">
+                    <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">SSH 密码 <span class="text-rose-500">*</span></label>
+                    <input
+                      v-model="hop.password"
+                      type="password"
+                      placeholder="跳板机登录密码"
+                      class="w-full px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                    />
+                  </div>
+
+                  <div v-if="hop.authType === 'key'" class="space-y-2">
+                    <div>
+                      <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">私钥 (路径或 PEM 文本) <span class="text-rose-500">*</span></label>
+                      <textarea
+                        v-model="hop.privateKey"
+                        rows="3"
+                        placeholder="~/.ssh/id_rsa 或直接粘贴 -----BEGIN OPENSSH PRIVATE KEY-----"
+                        class="w-full px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-[11px] font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
+                      ></textarea>
+                    </div>
+                    <div>
+                      <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">私钥密码 (Passphrase，可选)</label>
+                      <input
+                        v-model="hop.passphrase"
+                        type="password"
+                        placeholder="若私钥受密码保护请输入"
+                        class="w-full px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                      />
+                    </div>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -385,15 +493,18 @@ import {
   Loader2,
   Sliders,
   Network,
+  Plus,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-vue-next";
 import { useConnectionStore } from "../stores/connection";
-import type { ConnectionConfig, TestResult } from "../types";
+import type { ConnectionConfig, NetworkHop, TestResult } from "../types";
 
 const store = useConnectionStore();
 const { isModalOpen, editingConnection, closeModal, save, test } = store;
 
 const activeTab = ref<"general" | "network">("general");
-const networkMode = ref<"direct" | "http" | "socks5" | "ssh">("direct");
 
 const showApiKey = ref(false);
 const isTesting = ref(false);
@@ -409,24 +520,40 @@ const form = ref<ConnectionConfig>({
   timeout: 10,
 });
 
-const proxyForm = ref({
-  host: "",
-  port: 8080,
-  username: "",
-  password: "",
-});
-
-const sshForm = ref({
-  host: "",
-  port: 22,
-  user: "root",
-  authType: "password",
-  password: "",
-  privateKey: "",
-  passphrase: "",
-});
+const chain = ref<NetworkHop[]>([]);
 
 const isEditing = computed(() => !!editingConnection.value?.id);
+
+const enabledHopsCount = computed(() => {
+  return chain.value.filter((h) => h.enabled && h.host.trim()).length;
+});
+
+function addHop(type: "http" | "socks5" | "ssh") {
+  const newHop: NetworkHop = {
+    id: `hop_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    enabled: true,
+    type,
+    host: "",
+    port: type === "ssh" ? 22 : type === "socks5" ? 1080 : 8080,
+    username: type === "ssh" ? "root" : "",
+    password: "",
+    authType: type === "ssh" ? "password" : "",
+    privateKey: "",
+    passphrase: "",
+  };
+  chain.value.push(newHop);
+}
+
+function removeHop(index: number) {
+  chain.value.splice(index, 1);
+}
+
+function moveHop(index: number, delta: number) {
+  const targetIndex = index + delta;
+  if (targetIndex < 0 || targetIndex >= chain.value.length) return;
+  const item = chain.value.splice(index, 1)[0];
+  chain.value.splice(targetIndex, 0, item);
+}
 
 watch(
   () => editingConnection.value,
@@ -441,28 +568,49 @@ watch(
         timeout: val.timeout || 10,
       };
 
-      // Populate proxy & SSH tunnel state
-      if (val.sshTunnel?.enabled) {
-        networkMode.value = "ssh";
-        sshForm.value = {
-          host: val.sshTunnel.host || "",
-          port: val.sshTunnel.port || 22,
-          user: val.sshTunnel.user || "root",
-          authType: val.sshTunnel.authType || "password",
-          password: val.sshTunnel.password || "",
-          privateKey: val.sshTunnel.privateKey || "",
-          passphrase: val.sshTunnel.passphrase || "",
-        };
-      } else if (val.proxy?.enabled) {
-        networkMode.value = val.proxy.type === "socks5" ? "socks5" : "http";
-        proxyForm.value = {
-          host: val.proxy.host || "",
-          port: val.proxy.port || (val.proxy.type === "socks5" ? 1080 : 8080),
-          username: val.proxy.username || "",
-          password: val.proxy.password || "",
-        };
+      // Populate chain
+      if (val.proxyChain && Array.isArray(val.proxyChain) && val.proxyChain.length > 0) {
+        chain.value = val.proxyChain.map((h) => ({
+          id: h.id || `hop_${Math.random().toString(36).slice(2, 7)}`,
+          enabled: h.enabled !== false,
+          type: h.type || "http",
+          host: h.host || "",
+          port: h.port || (h.type === "ssh" ? 22 : h.type === "socks5" ? 1080 : 8080),
+          username: h.username || "",
+          password: h.password || "",
+          authType: h.authType || (h.type === "ssh" ? "password" : ""),
+          privateKey: h.privateKey || "",
+          passphrase: h.passphrase || "",
+        }));
       } else {
-        networkMode.value = "direct";
+        // Auto-migrate from legacy proxy or sshTunnel fields if present
+        const migrated: NetworkHop[] = [];
+        if (val.proxy?.enabled && val.proxy.host) {
+          migrated.push({
+            id: `hop_proxy_${Date.now()}`,
+            enabled: true,
+            type: val.proxy.type || "http",
+            host: val.proxy.host,
+            port: val.proxy.port || (val.proxy.type === "socks5" ? 1080 : 8080),
+            username: val.proxy.username || "",
+            password: val.proxy.password || "",
+          });
+        }
+        if (val.sshTunnel?.enabled && val.sshTunnel.host) {
+          migrated.push({
+            id: `hop_ssh_${Date.now()}`,
+            enabled: true,
+            type: "ssh",
+            host: val.sshTunnel.host,
+            port: val.sshTunnel.port || 22,
+            username: val.sshTunnel.user || "root",
+            authType: val.sshTunnel.authType || "password",
+            password: val.sshTunnel.password || "",
+            privateKey: val.sshTunnel.privateKey || "",
+            passphrase: val.sshTunnel.passphrase || "",
+          });
+        }
+        chain.value = migrated;
       }
 
       activeTab.value = "general";
@@ -476,56 +624,12 @@ watch(
 function buildFullConfig(): ConnectionConfig {
   const config: ConnectionConfig = {
     ...form.value,
+    proxyChain: chain.value.map((h) => ({
+      ...h,
+      host: h.host.trim(),
+      username: h.username?.trim() || "",
+    })),
   };
-
-  if (networkMode.value === "ssh") {
-    config.sshTunnel = {
-      enabled: true,
-      host: sshForm.value.host.trim(),
-      port: sshForm.value.port || 22,
-      user: sshForm.value.user.trim() || "root",
-      authType: sshForm.value.authType,
-      password: sshForm.value.password,
-      privateKey: sshForm.value.privateKey,
-      passphrase: sshForm.value.passphrase,
-    };
-    config.proxy = {
-      enabled: false,
-      type: "",
-      host: "",
-      port: 0,
-    };
-  } else if (networkMode.value === "http" || networkMode.value === "socks5") {
-    config.proxy = {
-      enabled: true,
-      type: networkMode.value,
-      host: proxyForm.value.host.trim(),
-      port: proxyForm.value.port || (networkMode.value === "socks5" ? 1080 : 8080),
-      username: proxyForm.value.username,
-      password: proxyForm.value.password,
-    };
-    config.sshTunnel = {
-      enabled: false,
-      host: "",
-      port: 22,
-      user: "root",
-      authType: "password",
-    };
-  } else {
-    config.proxy = {
-      enabled: false,
-      type: "",
-      host: "",
-      port: 0,
-    };
-    config.sshTunnel = {
-      enabled: false,
-      host: "",
-      port: 22,
-      user: "root",
-      authType: "password",
-    };
-  }
 
   return config;
 }

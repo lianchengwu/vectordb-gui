@@ -1,8 +1,19 @@
-import type { ConnectionConfig, ProxyConfig, SSHTunnelConfig } from "../../bindings/vectordb-1/backend/storage/models";
-import type { CollectionMeta, FieldMeta, IndexColumn, QueryDocumentResponse } from "../../bindings/vectordb-1/backend/client/models";
+import type {
+  ConnectionConfig,
+  NetworkHop,
+  ProxyConfig,
+  SSHTunnelConfig,
+} from "../../bindings/vectordb-1/backend/storage/models";
+import type {
+  CollectionMeta,
+  FieldMeta,
+  IndexColumn,
+  QueryDocumentResponse,
+} from "../../bindings/vectordb-1/backend/client/models";
 
 export type {
   ConnectionConfig,
+  NetworkHop,
   ProxyConfig,
   SSHTunnelConfig,
   CollectionMeta,
