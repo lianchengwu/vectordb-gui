@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	_ "embed"
 	"log"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -11,6 +12,9 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+//go:embed build/appicon.png
+var appIcon []byte
+
 func main() {
 	connSvc := service.NewConnectionService()
 	vdbSvc := service.NewVectorDBService()
@@ -18,6 +22,7 @@ func main() {
 	app := application.New(application.Options{
 		Name:        "Tencent Cloud VectorDB Client",
 		Description: "GUI Client for Tencent Cloud VectorDB",
+		Icon:        appIcon,
 		Services: []application.Service{
 			application.NewService(connSvc),
 			application.NewService(vdbSvc),
@@ -38,6 +43,9 @@ func main() {
 		MinHeight: 600,
 		Frameless: true,
 		URL:       "/",
+		Linux: application.LinuxWindow{
+			Icon: appIcon,
+		},
 	})
 
 	err := app.Run()
