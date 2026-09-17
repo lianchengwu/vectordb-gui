@@ -1,13 +1,58 @@
-.task
+# Binaries and build outputs
 bin/
 bin
 build/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.appimage
+*.deb
+*.rpm
+
+# Frontend build artifacts and dependencies
 frontend/dist/
-frontend/node_modules
-build/linux/appimage/build
+frontend/node_modules/
+node_modules/
+
+# Package manager logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Go test and coverage artifacts
+*.test
+*.out
+coverage.txt
+coverage.html
+
+# Wails and task runner artifacts
+.task/
+build/linux/appimage/build/
 build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
-# Mobile generated (per-machine; overlays hold absolute paths)
 build/ios/xcode/overlay.json
 build/ios/xcode/gen/
 build/android/overlay.json
 build/android/gen/
+
+# Operating system and editor files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local environment and connection secrets
+.env
+.env.*
+*.local
+connections.json
