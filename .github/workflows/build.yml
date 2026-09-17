@@ -134,6 +134,9 @@ jobs:
         run: |
           mkdir -p dist
           find release-artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec cp {} dist/ \;
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+          cd ..
           ls -lh dist
 
       - name: Create Release

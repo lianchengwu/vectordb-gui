@@ -35,6 +35,7 @@ import UpdateModal from "./components/UpdateModal.vue";
 import { useConnectionStore } from "./stores/connection";
 import { useVectorDBStore } from "./stores/vectordb";
 import { useThemeStore } from "./stores/theme";
+import { startAutoUpdateCheck } from "./stores/updater";
 
 const connStore = useConnectionStore();
 const vdbStore = useVectorDBStore();
@@ -63,6 +64,7 @@ watch(
 
 onMounted(async () => {
   themeStore.initTheme();
+  startAutoUpdateCheck();
   await loadConnections();
   if (activeConnectionId.value) {
     await loadDatabases(activeConnectionId.value);
