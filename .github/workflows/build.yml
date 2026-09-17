@@ -86,7 +86,14 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           wails3 task linux:build EXTRA_TAGS="gtk3"
-          tar -czvf "bin/${{ matrix.platform.archive_name }}" -C bin tcvectordb-gui
+          mkdir -p pkg
+          cp bin/tcvectordb-gui pkg/
+          cp build/appicon.png pkg/tcvectordb-gui.png
+          cp build/linux/tcvectordb-gui.desktop pkg/
+          cp build/linux/install.sh pkg/
+          chmod +x pkg/install.sh pkg/tcvectordb-gui
+          tar -czvf "bin/${{ matrix.platform.archive_name }}" -C pkg \
+            tcvectordb-gui tcvectordb-gui.png tcvectordb-gui.desktop install.sh
 
       - name: Build Application (Windows)
         if: runner.os == 'Windows'
