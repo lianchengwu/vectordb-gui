@@ -37,8 +37,18 @@ func (s *VectorDBService) InvalidateCache(connID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if connID == "" {
+		for _, entry := range s.clients {
+			if entry.client != nil {
+				_ = entry.client.Close()
+			}
+		}
 		s.clients = make(map[string]cachedClient)
-	} else {
+		return
+	}
+	if entry, ok := s.clients[connID]; ok {
+		if entry.client != nil {
+			_ = entry.client.Close()
+		}
 		delete(s.clients, connID)
 	}
 }
@@ -71,16 +81,14 @@ func (s *VectorDBService) getClient(connID string) (*client.Client, error) {
 		return entry.client, nil
 	}
 
-	username := target.Username
-	if username == "" {
-		username = "root"
-	}
 	clientTimeout := 60 * time.Second
 	if target.Timeout > 60 {
 		clientTimeout = time.Duration(target.Timeout) * time.Second
 	}
-	newCli := client.NewClient(target.URL, username, target.APIKey, clientTimeout)
-
+	newCli, err := client.NewClientWithConfig(*target, clientTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("创建客户端连接失败: %w", err)
+	}
 	s.mu.Lock()
 	s.clients[connID] = cachedClient{
 		client: newCli,

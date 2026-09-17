@@ -12,4 +12,46 @@ export interface ConnectionConfig {
      * in seconds
      */
     "timeout": number;
+    "proxy"?: ProxyConfig;
+    "sshTunnel"?: SSHTunnelConfig;
+}
+
+export interface ProxyConfig {
+    "enabled": boolean;
+
+    /**
+     * "http", "socks5"
+     */
+    "type": string;
+    "host": string;
+    "port": number;
+    "username"?: string;
+    "password"?: string;
+}
+
+export interface SSHTunnelConfig {
+    "enabled": boolean;
+    "host": string;
+
+    /**
+     * default 22
+     */
+    "port": number;
+
+    /**
+     * e.g. root
+     */
+    "user": string;
+
+    /**
+     * "password", "key"
+     */
+    "authType": string;
+    "password"?: string;
+
+    /**
+     * file path or PEM key text
+     */
+    "privateKey"?: string;
+    "passphrase"?: string;
 }

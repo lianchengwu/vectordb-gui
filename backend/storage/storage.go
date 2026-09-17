@@ -7,13 +7,35 @@ import (
 	"sync"
 )
 
+type ProxyConfig struct {
+	Enabled  bool   `json:"enabled"`
+	Type     string `json:"type"` // "http", "socks5"
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+}
+
+type SSHTunnelConfig struct {
+	Enabled    bool   `json:"enabled"`
+	Host       string `json:"host"`
+	Port       int    `json:"port"` // default 22
+	User       string `json:"user"` // e.g. root
+	AuthType   string `json:"authType"` // "password", "key"
+	Password   string `json:"password,omitempty"`
+	PrivateKey string `json:"privateKey,omitempty"` // file path or PEM key text
+	Passphrase string `json:"passphrase,omitempty"`
+}
+
 type ConnectionConfig struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	URL      string `json:"url"`
-	Username string `json:"username"`
-	APIKey   string `json:"apiKey"`
-	Timeout  int    `json:"timeout"` // in seconds
+	ID        string          `json:"id"`
+	Name      string          `json:"name"`
+	URL       string          `json:"url"`
+	Username  string          `json:"username"`
+	APIKey    string          `json:"apiKey"`
+	Timeout   int             `json:"timeout"` // in seconds
+	Proxy     ProxyConfig     `json:"proxy,omitempty"`
+	SSHTunnel SSHTunnelConfig `json:"sshTunnel,omitempty"`
 }
 
 type Storage struct {

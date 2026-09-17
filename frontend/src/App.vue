@@ -23,6 +23,9 @@
 
     <!-- Global Connection Edit/Create Modal -->
     <ConnectionModal />
+
+    <!-- Global Update Check Modal -->
+    <UpdateModal />
   </div>
 </template>
 
@@ -33,6 +36,7 @@ import Sidebar from "./components/Sidebar.vue";
 import CollectionTree from "./components/CollectionTree.vue";
 import MainView from "./components/MainView.vue";
 import ConnectionModal from "./components/ConnectionModal.vue";
+import UpdateModal from "./components/UpdateModal.vue";
 import { useConnectionStore } from "./stores/connection";
 import { useVectorDBStore } from "./stores/vectordb";
 import { useThemeStore } from "./stores/theme";

@@ -37,6 +37,22 @@
 
       <span class="h-4 w-[1px] bg-slate-200 dark:bg-slate-800 mx-0.5"></span>
 
+      <!-- Check for Updates -->
+      <button
+        @click="onCheckUpdate"
+        :disabled="updaterStore.checking.value"
+        class="relative w-7 h-7 rounded hover:bg-slate-200/80 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition flex items-center justify-center disabled:opacity-50"
+        title="检查软件更新"
+      >
+        <Loader2 v-if="updaterStore.checking.value" class="w-3.5 h-3.5 animate-spin text-blue-500" />
+        <ArrowUpCircle v-else class="w-3.5 h-3.5 text-blue-500 hover:scale-110 transition-transform" />
+        <span
+          v-if="updaterStore.hasUpdate.value"
+          class="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900 animate-pulse"
+        ></span>
+      </button>
+
+      <span class="h-4 w-[1px] bg-slate-200 dark:bg-slate-800 mx-0.5"></span>
       <!-- Window Minimize -->
       <button
         @click="onMinimize"
@@ -70,19 +86,25 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { Database, Minus, Square, Copy, X, Sun, Moon } from "lucide-vue-next";
+import { Database, Minus, Square, Copy, X, Sun, Moon, ArrowUpCircle, Loader2 } from "lucide-vue-next";
 import { Window } from "@wailsio/runtime";
 import { useThemeStore } from "../stores/theme";
 import { useConnectionStore } from "../stores/connection";
+import { useUpdaterStore } from "../stores/updater";
 
 const themeStore = useThemeStore();
 const connStore = useConnectionStore();
+const updaterStore = useUpdaterStore();
 
 const isMaximized = ref(false);
 
 const activeConnectionName = computed(() => {
   return connStore.activeConnection.value?.name || connStore.activeConnection.value?.url || "";
 });
+
+function onCheckUpdate() {
+  updaterStore.checkForUpdates(true);
+}
 
 async function updateMaximizeState() {
   try {

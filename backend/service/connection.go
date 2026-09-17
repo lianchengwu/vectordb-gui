@@ -53,11 +53,12 @@ func (s *ConnectionService) TestConnection(cfg storage.ConnectionConfig) (*TestC
 	if timeout <= 0 {
 		timeout = 10 * time.Second
 	}
-	username := cfg.Username
-	if username == "" {
-		username = "root"
+	cli, err := client.NewClientWithConfig(cfg, timeout)
+	if err != nil {
+		return &TestConnectionResult{Success: false, Message: err.Error()}, nil
 	}
-	cli := client.NewClient(cfg.URL, username, cfg.APIKey, timeout)
+	defer cli.Close()
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 

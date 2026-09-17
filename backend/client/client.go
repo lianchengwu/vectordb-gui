@@ -9,6 +9,9 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/ssh"
+	"vectordb-1/backend/storage"
 )
 
 type Client struct {
@@ -16,24 +19,53 @@ type Client struct {
 	username   string
 	apiKey     string
 	httpClient *http.Client
+	sshClient  *ssh.Client
 }
 
-func NewClient(rawURL, username, apiKey string, timeout time.Duration) *Client {
+func (c *Client) Close() error {
+	if c.sshClient != nil {
+		return c.sshClient.Close()
+	}
+	return nil
+}
+
+func NewClientWithConfig(cfg storage.ConnectionConfig, timeout time.Duration) (*Client, error) {
 	if timeout <= 0 {
 		timeout = 10 * time.Second
 	}
-	u := strings.TrimRight(strings.TrimSpace(rawURL), "/")
+	u := strings.TrimRight(strings.TrimSpace(cfg.URL), "/")
 	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
 		u = "http://" + u
 	}
-	return &Client{
-		baseURL:  u,
-		username: username,
-		apiKey:   apiKey,
-		httpClient: &http.Client{
-			Timeout: timeout,
-		},
+
+	httpCli, sshCli, err := BuildHTTPClient(timeout, cfg.Proxy, cfg.SSHTunnel)
+	if err != nil {
+		return nil, err
 	}
+
+	username := cfg.Username
+	if username == "" {
+		username = "root"
+	}
+
+	return &Client{
+		baseURL:    u,
+		username:   username,
+		apiKey:     cfg.APIKey,
+		httpClient: httpCli,
+		sshClient:  sshCli,
+	}, nil
+}
+
+func NewClient(rawURL, username, apiKey string, timeout time.Duration) *Client {
+	cfg := storage.ConnectionConfig{
+		URL:      rawURL,
+		Username: username,
+		APIKey:   apiKey,
+		Timeout:  int(timeout.Seconds()),
+	}
+	cli, _ := NewClientWithConfig(cfg, timeout)
+	return cli
 }
 
 func (c *Client) doRequest(ctx context.Context, method, path string, reqBody, respBody interface{}) error {
