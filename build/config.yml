@@ -5,13 +5,13 @@ version: '3'
 
 # This information is used to generate the build assets.
 info:
-  companyName: "My Company" # The name of the company
-  productName: "My Product" # The name of the application
-  productIdentifier: "com.mycompany.myproduct" # The unique product identifier
-  description: "A program that does X" # The application description
-  copyright: "(c) 2025, My Company" # Copyright text
-  comments: "Some Product Comments" # Comments
-  version: "0.0.1" # The application version
+  companyName: "Tencent VectorDB Community"
+  productName: "Tencent Cloud VectorDB Client"
+  productIdentifier: "com.tcvectordb.gui"
+  description: "GUI Client for Tencent Cloud VectorDB"
+  copyright: "(c) 2026, Tencent VectorDB Community"
+  comments: "GUI Client for Tencent Cloud VectorDB"
+  version: "0.2.0"
   # cfBundleIconName: "appicon" # The macOS icon name in Assets.car icon bundles (optional)
   #                               # Should match the name of your .icon file without the extension
   #                               # If not set and Assets.car exists, defaults to "appicon"
