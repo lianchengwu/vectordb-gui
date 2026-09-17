@@ -143,20 +143,3 @@ export function useUpdaterStore() {
     closeModal,
   };
 }
-
-const AUTO_CHECK_INTERVAL_MS = 2 * 60 * 60 * 1000; // 2 小时
-let autoCheckTimer: number | null = null;
-
-export function startAutoUpdateCheck() {
-  if (autoCheckTimer !== null) return;
-  const { checkForUpdates } = useUpdaterStore();
-  void checkForUpdates(false);
-  autoCheckTimer = setInterval(() => void checkForUpdates(false), AUTO_CHECK_INTERVAL_MS);
-}
-
-export function stopAutoUpdateCheck() {
-  if (autoCheckTimer !== null) {
-    clearInterval(autoCheckTimer);
-    autoCheckTimer = null;
-  }
-}
