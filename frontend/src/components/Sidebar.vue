@@ -111,7 +111,7 @@
           <span class="text-[10px]">{{ themeStore.isDark.value ? '深色' : '浅色' }}</span>
         </button>
         <span class="text-slate-400 dark:text-slate-600">|</span>
-        <span class="font-mono">v0.2.1</span>
+        <span class="font-mono">v0.3.0</span>
       </div>
     </div>
   </aside>

@@ -15,7 +15,7 @@ export interface ReleaseInfo {
   url: string;
   assets: ReleaseAsset[];
 }
-export const CURRENT_VERSION = "v0.2.1";
+export const CURRENT_VERSION = "v0.3.0";
 const checking = ref(false);
 const hasUpdate = ref(false);
 const latestRelease = ref<ReleaseInfo | null>(null);
