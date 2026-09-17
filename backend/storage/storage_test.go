@@ -3,9 +3,9 @@ package storage
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
-
 func TestConnectionStorage(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "tcvectordb-test-*")
 	if err != nil {
@@ -112,6 +112,9 @@ func TestStorageCorruptedFile(t *testing.T) {
 }
 
 func TestStorageFilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping POSIX file permission checks on Windows")
+	}
 	tempDir, err := os.MkdirTemp("", "tcvectordb-test-*")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
