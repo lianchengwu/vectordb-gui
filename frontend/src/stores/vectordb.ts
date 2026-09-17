@@ -104,6 +104,13 @@ export function useVectorDBStore() {
       const target = openTabs.value.find((t) => t.id === tabId);
       if (target) {
         target.meta = meta;
+        if (meta?.isAiCollection) {
+          target.dbType = "ai";
+          const dbObj = databases.value.find((d) => d.name === database);
+          if (dbObj) {
+            dbObj.dbType = "ai";
+          }
+        }
       }
     } catch (e: unknown) {
       console.warn("Failed to describe collection in tab:", e);

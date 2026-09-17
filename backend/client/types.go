@@ -123,16 +123,18 @@ type AICollectionViewDescribeReq struct {
 	CollectionView string `json:"collectionView"`
 }
 
+type AICollectionViewData struct {
+	Database       string        `json:"database"`
+	CollectionView string        `json:"collectionView"`
+	Description    string        `json:"description,omitempty"`
+	Indexes        []IndexColumn `json:"indexes,omitempty"`
+	ReplicaNum     *uint32       `json:"replicaNum,omitempty"`
+	ShardNum       *uint32       `json:"shardNum,omitempty"`
+}
+
 type AICollectionViewDescribeRes struct {
 	ResponseHeader
-	CollectionView *struct {
-		Database       string        `json:"database"`
-		CollectionView string        `json:"collectionView"`
-		Description    string        `json:"description,omitempty"`
-		Indexes        []IndexColumn `json:"indexes,omitempty"`
-		ReplicaNum     *uint32       `json:"replicaNum,omitempty"`
-		ShardNum       *uint32       `json:"shardNum,omitempty"`
-	} `json:"collectionView"`
+	CollectionView *AICollectionViewData `json:"collectionView"`
 }
 
 type AIDocumentSetQueryReq struct {
