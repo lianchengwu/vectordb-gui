@@ -117,7 +117,8 @@ vectordb-1/
   go install github.com/wailsapp/wails/v3/cmd/wails3@latest
   ```
 - **系统依赖（Linux 用户）**：
-  - GTK3 与 WebKitGTK 开发库（例如 openSUSE: `webkit2gtk-4_1-devel`；Ubuntu/Debian: `libgtk-3-dev libwebkit2gtk-4.1-dev`）。
+  - GTK4 与 WebKitGTK 6.0 开发库（例如 openSUSE: `webkitgtk4-devel`；Ubuntu/Debian: `libgtk-4-dev libwebkitgtk-6.0-dev`）。
+  - 需要 Ubuntu 24.04+ / Debian 13+ / Fedora 40+ 等提供 WebKitGTK 6.0 的发行版。
 
 ### 2. 获取代码与安装前端依赖
 ```bash
