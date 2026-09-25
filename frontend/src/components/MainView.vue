@@ -146,16 +146,6 @@
             </button>
           </div>
 
-          <!-- Delete Collection Header Button -->
-          <button
-            type="button"
-            @click="promptDeleteActiveCollection"
-            class="px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700/80 hover:border-rose-300 dark:hover:border-rose-800/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 transition flex items-center gap-1 text-xs shadow-sm"
-            title="删除当前集合"
-          >
-            <Trash2 class="w-3.5 h-3.5" />
-            <span class="hidden sm:inline">删除集合</span>
-          </button>
         </div>
       </header>
 
@@ -446,20 +436,6 @@ function handlePromptDeleteTab() {
     };
   }
   closeTabContextMenu();
-}
-
-function promptDeleteActiveCollection() {
-  if (activeTab.value) {
-    deleteModal.value = {
-      visible: true,
-      loading: false,
-      error: "",
-      connId: activeTab.value.connId,
-      database: activeTab.value.database,
-      collection: activeTab.value.collection,
-      dbType: activeTab.value.dbType,
-    };
-  }
 }
 
 function closeDeleteModal() {
