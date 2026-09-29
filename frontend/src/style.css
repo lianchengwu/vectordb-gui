@@ -11,6 +11,16 @@ html, body, #app {
   user-select: none;
 }
 
+/* Native select popups follow the OS/WebView theme via color-scheme.
+   Note: on WebKitGTK the popup is a native GTK widget; CSS cannot style it.
+   Theme-critical selects use the custom AppSelect component instead. */
+select {
+  color-scheme: light;
+}
+html.dark select {
+  color-scheme: dark;
+}
+
 .wails-drag {
   --wails-draggable: drag;
   --wails-non-client-region: caption;

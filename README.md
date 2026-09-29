@@ -54,6 +54,16 @@
 
 ---
 
+## 🐞 已知问题根因记录：Linux 下拉框不跟随深色主题
+
+**现象**：Linux（Wails v3 + WebKitGTK）上，深色主题中「每页条数」等原生 `<select>` 的**弹出选项列表仍是白色**。
+
+**根本原因**：
+1. WebKitGTK 的 `<select>` 弹出层由 `WebPopupMenuProxyGtk` 实现——纯 GTK 原生控件（`GtkPopover` + `GtkTreeView`），**页面 CSS（含 `option` 的 `background`、`color-scheme`）完全不会作用于它**，Chromium 上的验证手段对该路径无效。
+2. 弹出层配色只跟随**宿主进程的 GTK 主题**。Wails v3 启动 GTK 应用时未做任何主题干预；当系统为浅色 GTK（如本机 `gtk-theme-name=Breeze`、`gtk-application-prefer-dark-theme=false`）时，应用内主题（仅切换 `<html>` 的 `dark` class）与 GTK 原生弹出层天然脱钩。
+
+**修复**：弃用原生 `<select>`，改用自定义 `AppSelect.vue` 组件（纯 DOM + Tailwind `dark:` 类），弹出列表与应用主题严格一致，且跨引擎（Chromium / WebKitGTK）行为统一。
+
 ## 🛠️ 技术栈
 
 | 模块 | 技术选型 | 说明 |

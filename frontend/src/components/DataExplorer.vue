@@ -48,16 +48,18 @@
         <!-- Limit Selector -->
         <div class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
           <span>每页</span>
-          <select
-            v-model.number="limit"
+          <AppSelect
+            v-model="limit"
             @change="onLimitChange"
-            class="px-2 py-1 rounded bg-white border border-slate-300 text-slate-800 dark:bg-slate-800 dark:border-slate-700 dark:text-white text-xs font-mono focus:outline-none shadow-sm"
-          >
-            <option :value="10">10</option>
-            <option :value="20">20</option>
-            <option :value="50">50</option>
-            <option :value="100">100</option>
-          </select>
+            :options="[
+              { value: 10, label: '10' },
+              { value: 20, label: '20' },
+              { value: 50, label: '50' },
+              { value: 100, label: '100' },
+            ]"
+            trigger-class="px-2 py-1 rounded bg-white border border-slate-300 text-slate-800 dark:bg-slate-800 dark:border-slate-700 dark:text-white text-xs font-mono shadow-sm min-w-[64px]"
+            menu-class="font-mono text-xs min-w-[64px] left-0"
+          />
           <span>条</span>
         </div>
 
@@ -347,6 +349,7 @@ import { QueryDocuments } from "../../bindings/vectordb-1/backend/service/vector
 import type { CollectionMeta } from "../types";
 import JsonDetailModal from "./JsonDetailModal.vue";
 import DocumentEditModal from "./DocumentEditModal.vue";
+import AppSelect from "./AppSelect.vue";
 
 const props = defineProps<{
   connId: string;

@@ -486,13 +486,16 @@
                     </div>
                     <div>
                       <label class="block font-medium text-slate-700 dark:text-slate-300 mb-1">认证方式</label>
-                      <select
-                        v-model="hop.authType"
-                        class="w-full px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:outline-none"
-                      >
-                        <option value="password">账号密码 (Password)</option>
-                        <option value="key">私钥文件 / 内容 (Private Key)</option>
-                      </select>
+                      <AppSelect
+                        :model-value="hop.authType || 'password'"
+                        @update:model-value="hop.authType = String($event)"
+                        :options="[
+                          { value: 'password', label: '账号密码 (Password)' },
+                          { value: 'key', label: '私钥文件 / 内容 (Private Key)' },
+                        ]"
+                        trigger-class="w-full px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-900 dark:text-white text-xs"
+                        menu-class="w-full left-0"
+                      />
                     </div>
                   </div>
 
@@ -612,6 +615,7 @@ import {
 import { useConnectionStore } from "../stores/connection";
 import { useVectorDBStore } from "../stores/vectordb";
 import type { ConnectionConfig, NetworkHop, TestResult, DatabaseDetail } from "../types";
+import AppSelect from "./AppSelect.vue";
 
 const store = useConnectionStore();
 const vdbStore = useVectorDBStore();

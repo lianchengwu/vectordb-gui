@@ -35,16 +35,14 @@
 
       <div v-if="connections.length > 0" class="space-y-2">
         <div class="relative">
-          <select
-            :value="activeConnectionId"
-            @change="onConnectionChange(($event.target as HTMLSelectElement).value)"
-            class="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 dark:bg-slate-800/90 dark:border-slate-700 dark:text-white text-xs font-medium appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition cursor-pointer pr-8 truncate shadow-sm"
-          >
-            <option v-for="conn in connections" :key="conn.id" :value="conn.id">
-              {{ conn.name || conn.url }}
-            </option>
-          </select>
-          <ChevronDown class="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <AppSelect
+            :model-value="activeConnectionId"
+            @update:model-value="onConnectionChange($event as string)"
+            :options="connections.map((c) => ({ value: c.id, label: c.name || c.url }))"
+            trigger-class="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-900 dark:bg-slate-800/90 dark:border-slate-700 dark:text-white text-xs font-medium transition truncate shadow-sm"
+            menu-class="w-full"
+            :title="activeConnection?.url"
+          />
         </div>
 
         <!-- Connection actions toolbar -->
@@ -130,6 +128,7 @@ import {
 import { useConnectionStore } from "../stores/connection";
 import { useThemeStore } from "../stores/theme";
 import type { ConnectionConfig } from "../types";
+import AppSelect from "./AppSelect.vue";
 
 const emit = defineEmits<{
   (e: "connection-changed", connId: string): void;

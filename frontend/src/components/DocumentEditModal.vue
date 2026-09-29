@@ -364,14 +364,12 @@
           </div>
           <div>
             <label class="text-[11px] text-slate-500">字段类型</label>
-            <select
+            <AppSelect
               v-model="newFieldType"
-              class="w-full px-3 py-1.5 rounded-md bg-slate-50 border border-slate-300 dark:bg-slate-950 dark:border-slate-700 dark:text-white text-xs mt-1"
-            >
-              <option value="string">文本 (String)</option>
-              <option value="boolean">布尔 / 状态开关 (Boolean {{ effectiveDbType === 'ai' ? '→ 自动转为 UInt64 1/0' : '' }})</option>
-              <option value="number">数字 (Number {{ effectiveDbType === 'ai' ? '→ UInt64' : '' }})</option>
-            </select>
+              :options="fieldTypeOptions"
+              trigger-class="w-full px-3 py-1.5 rounded-md bg-slate-50 border border-slate-300 dark:bg-slate-950 dark:border-slate-700 dark:text-white text-xs mt-1"
+              menu-class="w-full left-0"
+            />
           </div>
         </div>
         <div class="flex justify-end gap-2 pt-2">
@@ -414,6 +412,7 @@ import {
 } from "lucide-vue-next";
 import type { CollectionMeta } from "../types";
 import { useVectorDBStore } from "../stores/vectordb";
+import AppSelect from "./AppSelect.vue";
 
 const props = defineProps<{
   isOpen: boolean;
@@ -479,6 +478,15 @@ const effectiveDbType = computed(() => {
   if (props.dbType === "ai") return "ai";
   return "base";
 });
+
+const fieldTypeOptions = computed(() => [
+  { value: "string", label: "文本 (String)" },
+  {
+    value: "boolean",
+    label: `布尔 / 状态开关 (Boolean ${effectiveDbType.value === "ai" ? "→ 自动转为 UInt64 1/0" : ""})`,
+  },
+  { value: "number", label: `数字 (Number ${effectiveDbType.value === "ai" ? "→ UInt64" : ""})` },
+]);
 
 // AI Suite read-only built-in attributes (case-insensitive)
 const AI_READONLY_FIELDS = new Set([
