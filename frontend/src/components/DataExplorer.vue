@@ -152,7 +152,9 @@
             <th
               v-for="col in displayColumns"
               :key="col"
-              class="px-3 py-2.5 font-medium whitespace-nowrap border-r border-slate-200/80 dark:border-slate-800/60 text-slate-700 dark:text-slate-300"
+              class="px-3 py-2.5 font-medium whitespace-nowrap border-r border-slate-200/80 dark:border-slate-800/60 text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 select-none transition"
+              :title="`点击按 ${col} 排序（仅当前页）`"
+              @click="toggleSort(col)"
             >
               <div class="flex items-center gap-1.5">
                 <span :class="isPrimaryKey(col) ? 'text-amber-700 dark:text-amber-300 font-bold' : ''">{{ col }}</span>
@@ -168,6 +170,14 @@
                 >
                   VECTOR
                 </span>
+                <span
+                  class="inline-flex text-[10px] leading-none w-3 shrink-0"
+                  :class="sortState?.column === col ? 'text-blue-600 dark:text-blue-400' : 'text-slate-300 dark:text-slate-600'"
+                >
+                  <ArrowUp v-if="sortState?.column === col && sortState.order === 'asc'" class="w-3 h-3" />
+                  <ArrowDown v-else-if="sortState?.column === col && sortState.order === 'desc'" class="w-3 h-3" />
+                  <ArrowUpDown v-else class="w-3 h-3" />
+                </span>
               </div>
             </th>
             <th class="px-3 py-2.5 w-20 text-center font-medium text-slate-500 dark:text-slate-400">操作</th>
@@ -175,7 +185,7 @@
         </thead>
         <tbody class="divide-y divide-slate-200/70 dark:divide-slate-800/60">
           <tr
-            v-for="(doc, rowIdx) in documents"
+            v-for="(doc, rowIdx) in sortedDocuments"
             :key="rowIdx"
             @contextmenu.prevent.stop="onRowContextMenu($event, doc)"
             class="hover:bg-blue-50/40 dark:hover:bg-slate-800/50 transition group cursor-pointer"
@@ -434,6 +444,9 @@ import {
   Check,
   Trash2,
   AlertTriangle,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from "lucide-vue-next";
 import { Browser } from "@wailsio/runtime";
 import { QueryDocuments } from "../../bindings/vectordb-1/backend/service/vectordbservice";
@@ -688,6 +701,35 @@ const displayColumns = computed(() => {
   }
 
   return Array.from(set);
+});
+
+// Client-side column sort: only reorders the currently loaded rows, never re-queries.
+type SortState = { column: string; order: "asc" | "desc" } | null;
+const sortState = ref<SortState>(null);
+
+function toggleSort(colName: string) {
+  if (sortState.value?.column === colName) {
+    sortState.value = sortState.value.order === "asc" ? { column: colName, order: "desc" } : null;
+  } else {
+    sortState.value = { column: colName, order: "asc" };
+  }
+}
+
+function compareCellValues(a: unknown, b: unknown): number {
+  // Numbers (incl. numeric strings) compare numerically; everything else as strings.
+  const numA = typeof a === "number" ? a : a !== null && a !== "" && !isNaN(Number(a)) ? Number(a) : NaN;
+  const numB = typeof b === "number" ? b : b !== null && b !== "" && !isNaN(Number(b)) ? Number(b) : NaN;
+  if (!isNaN(numA) && !isNaN(numB) && numA !== numB) return numA < numB ? -1 : 1;
+  const strA = formatScalarValue(a);
+  const strB = formatScalarValue(b);
+  return strA.localeCompare(strB, undefined, { numeric: true, sensitivity: "base" });
+}
+
+const sortedDocuments = computed(() => {
+  if (!sortState.value) return documents.value;
+  const { column, order } = sortState.value;
+  const dir = order === "asc" ? 1 : -1;
+  return [...documents.value].sort((d1, d2) => compareCellValues(d1[column], d2[column]) * dir);
 });
 
 function isPrimaryKey(colName: string): boolean {
