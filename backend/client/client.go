@@ -683,3 +683,87 @@ func (c *Client) UpdateDocument(ctx context.Context, database, collection, dbTyp
 	}
 	return nil
 }
+
+// DeleteDocument deletes a document by ID (Base collection) or a DocumentSet
+// (AI knowledge base). Base requests failing with error 11100 (AI-only data)
+// are automatically retried against the AI DocumentSet delete API.
+func (c *Client) DeleteDocument(ctx context.Context, database, collection, dbType string, query UpdateDocumentQuery) error {
+	if len(query.DocumentIds) == 0 && len(query.DocumentSetIds) == 0 && len(query.DocumentSetNames) == 0 && query.Filter == "" {
+		return fmt.Errorf("删除文档需要至少一个定位条件（文档 ID 或 filter）")
+	}
+
+	// 1. Explicit AI CollectionView / DocumentSet delete
+	if dbType == "ai" {
+		aiReq := AIDocumentSetDeleteReq{
+			Database:       database,
+			CollectionView: collection,
+		}
+		if len(query.DocumentSetIds) > 0 {
+			aiReq.Query.DocumentSetId = query.DocumentSetIds
+			aiReq.Query.DocumentSetIds = query.DocumentSetIds
+		} else if len(query.DocumentIds) > 0 {
+			aiReq.Query.DocumentSetId = query.DocumentIds
+			aiReq.Query.DocumentSetIds = query.DocumentIds
+		}
+		if len(query.DocumentSetNames) > 0 {
+			aiReq.Query.DocumentSetNames = query.DocumentSetNames
+		}
+		aiReq.Query.Filter = query.Filter
+
+		var resp DeleteDocumentResponse
+		if err := c.doRequest(ctx, http.MethodPost, "/ai/documentSet/delete", aiReq, &resp); err != nil {
+			return fmt.Errorf("AI 知识库文档删除失败: %w", err)
+		}
+		if resp.Code != 0 {
+			return fmt.Errorf("AI 知识库文档删除失败 (%d): %s", resp.Code, resp.Message)
+		}
+		return nil
+	}
+
+	// 2. Base Collection document delete
+	req := DeleteDocumentRequest{
+		Database:   database,
+		Collection: collection,
+		Query:      query,
+	}
+	var resp DeleteDocumentResponse
+	err := c.doRequest(ctx, http.MethodPost, "/document/delete", req, &resp)
+
+	// 3. If Base returns 11100, auto-retry AI DocumentSet delete!
+	if (err != nil && (strings.Contains(err.Error(), "11100") || strings.Contains(err.Error(), "user can only handle base data"))) ||
+		(resp.Code == 11100) {
+		aiReq := AIDocumentSetDeleteReq{
+			Database:       database,
+			CollectionView: collection,
+		}
+		if len(query.DocumentSetIds) > 0 {
+			aiReq.Query.DocumentSetId = query.DocumentSetIds
+			aiReq.Query.DocumentSetIds = query.DocumentSetIds
+		} else if len(query.DocumentIds) > 0 {
+			aiReq.Query.DocumentSetId = query.DocumentIds
+			aiReq.Query.DocumentSetIds = query.DocumentIds
+		}
+		if len(query.DocumentSetNames) > 0 {
+			aiReq.Query.DocumentSetNames = query.DocumentSetNames
+		}
+		aiReq.Query.Filter = query.Filter
+
+		var aiResp DeleteDocumentResponse
+		if aiErr := c.doRequest(ctx, http.MethodPost, "/ai/documentSet/delete", aiReq, &aiResp); aiErr == nil && aiResp.Code == 0 {
+			return nil
+		} else if aiErr != nil {
+			return fmt.Errorf("AI 知识库文档删除失败: %w", aiErr)
+		} else if aiResp.Code != 0 {
+			return fmt.Errorf("AI 知识库文档删除失败 (%d): %s", aiResp.Code, aiResp.Message)
+		}
+		return nil
+	}
+
+	if err != nil {
+		return err
+	}
+	if resp.Code != 0 {
+		return fmt.Errorf("api error (%d): %s", resp.Code, resp.Message)
+	}
+	return nil
+}

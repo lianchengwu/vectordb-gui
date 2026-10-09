@@ -13,6 +13,10 @@ import * as client$0 from "../client/models.js";
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
+export function DeleteDocument(params: $models.DeleteDocumentParams): $CancellablePromise<void> {
+    return $Call.ByID(1451783937, params);
+}
+
 export function DescribeCollection(connID: string, database: string, collection: string, dbType: string): $CancellablePromise<client$0.CollectionMeta | null> {
     return $Call.ByID(3631453886, connID, database, collection, dbType);
 }

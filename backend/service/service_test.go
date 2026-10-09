@@ -74,6 +74,12 @@ func setupMockServer(t *testing.T) *httptest.Server {
 				AffectedCount:  1,
 			}
 			_ = json.NewEncoder(w).Encode(resp)
+		case "/document/delete":
+			resp := client.DeleteDocumentResponse{
+				ResponseHeader: client.ResponseHeader{Code: 0, Message: "Success"},
+				AffectedCount:  1,
+			}
+			_ = json.NewEncoder(w).Encode(resp)
 		default:
 			http.NotFound(w, r)
 		}
@@ -272,6 +278,20 @@ func TestVectorDBService_Operations(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("UpdateDocument failed: %v", err)
 	}
+
+	// 6. DeleteDocument
+	if err := vdbSvc.DeleteDocument(DeleteDocumentParams{
+		ConnectionID: "test-conn",
+		Database:     "db_test1",
+		Collection:   "coll_1",
+		DbType:       "base",
+		Query: client.UpdateDocumentQuery{
+			DocumentIds: []string{"doc_1"},
+		},
+	}); err != nil {
+		t.Fatalf("DeleteDocument failed: %v", err)
+	}
+
 
 	// 6. DropCollection
 	if err := vdbSvc.DropCollection("test-conn", "db_test1", "coll_1", "base"); err != nil {

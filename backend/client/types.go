@@ -248,6 +248,23 @@ type UpdateDocumentRequest struct {
 	Update     map[string]interface{} `json:"update"`
 }
 
+type DeleteDocumentRequest struct {
+	Database   string              `json:"database"`
+	Collection string              `json:"collection"`
+	Query      UpdateDocumentQuery `json:"query"`
+}
+
+type AIDocumentSetDeleteReq struct {
+	Database       string `json:"database"`
+	CollectionView string `json:"collectionView"`
+	Query          struct {
+		DocumentSetId    []string `json:"documentSetId,omitempty"`
+		DocumentSetIds   []string `json:"documentSetIds,omitempty"`
+		DocumentSetNames []string `json:"documentSetNames,omitempty"`
+		Filter           string   `json:"filter,omitempty"`
+	} `json:"query"`
+}
+
 type AIDocumentSetUpdateReq struct {
 	Database       string `json:"database"`
 	CollectionView string `json:"collectionView"`
@@ -261,6 +278,11 @@ type AIDocumentSetUpdateReq struct {
 }
 
 type UpdateDocumentResponse struct {
+	ResponseHeader
+	AffectedCount int `json:"affectedCount,omitempty"`
+}
+
+type DeleteDocumentResponse struct {
 	ResponseHeader
 	AffectedCount int `json:"affectedCount,omitempty"`
 }

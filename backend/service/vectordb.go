@@ -260,3 +260,22 @@ func (s *VectorDBService) UpdateDocument(params UpdateDocumentParams) error {
 	defer cancel()
 	return cli.UpdateDocument(ctx, params.Database, params.Collection, params.DbType, params.Query, params.Update)
 }
+
+type DeleteDocumentParams struct {
+	ConnectionID string                     `json:"connectionId"`
+	Database     string                     `json:"database"`
+	Collection   string                     `json:"collection"`
+	DbType       string                     `json:"dbType,omitempty"`
+	Query        client.UpdateDocumentQuery `json:"query"`
+}
+
+func (s *VectorDBService) DeleteDocument(params DeleteDocumentParams) error {
+	cli, err := s.getClient(params.ConnectionID)
+	if err != nil {
+		return err
+	}
+	timeout := s.getTimeout(params.ConnectionID, 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return cli.DeleteDocument(ctx, params.Database, params.Collection, params.DbType, params.Query)
+}

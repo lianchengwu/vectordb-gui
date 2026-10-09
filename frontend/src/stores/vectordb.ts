@@ -6,6 +6,7 @@ import {
   DescribeCollection,
   DropCollection,
   UpdateDocument,
+  DeleteDocument,
 } from "../../bindings/vectordb-1/backend/service/vectordbservice";
 
 const databases = ref<DatabaseDetail[]>([]);
@@ -218,6 +219,28 @@ export function useVectorDBStore() {
     });
   }
 
+  async function deleteDocument(
+    connId: string,
+    database: string,
+    collection: string,
+    dbType: string,
+    query: { documentIds?: string[]; documentSetIds?: string[]; filter?: string }
+  ) {
+    if (!connId || !database || !collection) return;
+    const type = dbType || getDbType(database);
+    await DeleteDocument({
+      connectionId: connId,
+      database,
+      collection,
+      dbType: type,
+      query: {
+        documentIds: query.documentIds || [],
+        documentSetIds: query.documentSetIds || [],
+        filter: query.filter || "",
+      },
+    });
+  }
+
   function reset() {
     databases.value = [];
     collectionsByDb.value = {};
@@ -252,6 +275,7 @@ export function useVectorDBStore() {
     closeAllTabs,
     deleteCollection,
     updateDocument,
+    deleteDocument,
     reset,
   };
 }

@@ -5,6 +5,14 @@
 // @ts-ignore: Unused imports
 import * as client$0 from "../client/models.js";
 
+export interface DeleteDocumentParams {
+    "connectionId": string;
+    "database": string;
+    "collection": string;
+    "dbType"?: string;
+    "query": client$0.UpdateDocumentQuery;
+}
+
 export interface QueryDocumentsParams {
     "connectionId": string;
     "database": string;

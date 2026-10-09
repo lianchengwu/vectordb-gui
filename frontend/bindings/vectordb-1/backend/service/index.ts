@@ -9,6 +9,7 @@ export {
 };
 
 export type {
+    DeleteDocumentParams,
     QueryDocumentsParams,
     TestConnectionResult,
     UpdateDocumentParams

@@ -308,6 +308,95 @@
           <Copy class="w-3.5 h-3.5 text-slate-400" />
           <span>复制整行 JSON</span>
         </button>
+
+        <div class="my-1 border-t border-slate-100 dark:border-slate-800/60"></div>
+
+        <button
+          type="button"
+          @click="handleContextDelete"
+          class="w-full px-3 py-1.5 text-left flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition font-medium"
+        >
+          <Trash2 class="w-3.5 h-3.5" />
+          <span>删除文档</span>
+        </button>
+      </div>
+    </Teleport>
+
+    <!-- Delete Document Confirmation Modal -->
+    <Teleport to="body">
+      <div
+        v-if="deleteDocModal.visible"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 text-xs"
+        @click.self="closeDeleteDocModal"
+      >
+        <div class="w-full max-w-md rounded-xl bg-white border border-slate-200 shadow-2xl overflow-hidden flex flex-col text-slate-800 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 transition-colors duration-200">
+          <!-- Modal Header -->
+          <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 dark:bg-rose-600/20 dark:border-rose-500/30 dark:text-rose-400 flex items-center justify-center shrink-0">
+                <AlertTriangle class="w-4 h-4" />
+              </div>
+              <h3 class="text-sm font-semibold text-slate-900 dark:text-white tracking-tight">删除文档</h3>
+            </div>
+            <button
+              type="button"
+              @click="closeDeleteDocModal"
+              :disabled="deleteDocModal.loading"
+              class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition disabled:opacity-50"
+            >
+              <X class="w-4 h-4" />
+            </button>
+          </div>
+
+          <!-- Modal Body -->
+          <div class="px-5 py-4 space-y-3">
+            <p class="text-slate-600 dark:text-slate-300">
+              确定要删除文档
+              <span class="font-semibold font-mono text-rose-600 dark:text-rose-400 break-all">{{ getDocId(deleteDocModal.doc) || "(未知 ID)" }}</span>
+              吗？此操作不可恢复。
+            </p>
+
+            <div class="p-3 rounded-lg bg-slate-50 border border-slate-200 dark:bg-slate-800/60 dark:border-slate-700/60 space-y-1.5 font-mono text-[11px]">
+              <div class="flex justify-between text-slate-500 dark:text-slate-400">
+                <span>所属集合:</span>
+                <span class="text-slate-800 dark:text-slate-200 font-medium">{{ collection }}</span>
+              </div>
+              <div class="flex justify-between text-slate-500 dark:text-slate-400">
+                <span>文档 ID:</span>
+                <span class="text-slate-800 dark:text-slate-200 font-medium break-all">{{ getDocId(deleteDocModal.doc) || "-" }}</span>
+              </div>
+            </div>
+
+            <div
+              v-if="deleteDocModal.error"
+              class="p-2.5 rounded-md bg-rose-100 border border-rose-300 text-rose-800 dark:bg-rose-900/40 dark:border-rose-800 dark:text-rose-200 text-[11px] break-all"
+            >
+              删除失败: {{ deleteDocModal.error }}
+            </div>
+          </div>
+
+          <!-- Modal Footer -->
+          <div class="px-5 py-3.5 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2 shrink-0 bg-slate-50/60 dark:bg-slate-950/40">
+            <button
+              type="button"
+              @click="closeDeleteDocModal"
+              :disabled="deleteDocModal.loading"
+              class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition disabled:opacity-50"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              @click="confirmDeleteDoc"
+              :disabled="deleteDocModal.loading"
+              class="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-medium transition flex items-center gap-1.5 disabled:opacity-50 shadow-sm"
+            >
+              <Loader2 v-if="deleteDocModal.loading" class="w-3.5 h-3.5 animate-spin" />
+              <Trash2 v-else class="w-3.5 h-3.5" />
+              <span>确认删除</span>
+            </button>
+          </div>
+        </div>
       </div>
     </Teleport>
 
@@ -343,9 +432,12 @@ import {
   Pencil,
   Copy,
   Check,
+  Trash2,
+  AlertTriangle,
 } from "lucide-vue-next";
 import { Browser } from "@wailsio/runtime";
 import { QueryDocuments } from "../../bindings/vectordb-1/backend/service/vectordbservice";
+import { useVectorDBStore } from "../stores/vectordb";
 import type { CollectionMeta } from "../types";
 import JsonDetailModal from "./JsonDetailModal.vue";
 import DocumentEditModal from "./DocumentEditModal.vue";
@@ -393,6 +485,22 @@ const docContextMenu = ref<DocContextMenuState>({
   y: 0,
   doc: null,
 });
+
+interface DeleteDocModalState {
+  visible: boolean;
+  loading: boolean;
+  error: string;
+  doc: Record<string, unknown> | null;
+}
+
+const deleteDocModal = ref<DeleteDocModalState>({
+  visible: false,
+  loading: false,
+  error: "",
+  doc: null,
+});
+
+const vdbStore = useVectorDBStore();
 
 const toastMessage = ref("");
 let toastTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -503,6 +611,44 @@ async function handleContextCopyJson() {
     } catch {
       // ignore
     }
+  }
+}
+
+function handleContextDelete() {
+  const doc = docContextMenu.value.doc;
+  closeDocContextMenu();
+  if (!doc) return;
+  deleteDocModal.value = { visible: true, loading: false, error: "", doc };
+}
+
+function closeDeleteDocModal() {
+  if (deleteDocModal.value.loading) return;
+  deleteDocModal.value.visible = false;
+  deleteDocModal.value.error = "";
+}
+
+async function confirmDeleteDoc() {
+  const doc = deleteDocModal.value.doc;
+  if (!doc) return;
+  const id = getDocId(doc);
+  if (!id) {
+    deleteDocModal.value.error = "无法定位当前文档主键 ID，无法删除";
+    return;
+  }
+  deleteDocModal.value.loading = true;
+  deleteDocModal.value.error = "";
+  try {
+    await vdbStore.deleteDocument(props.connId, props.database, props.collection, effectiveDbType.value, {
+      documentIds: [id],
+      documentSetIds: [id],
+    });
+    deleteDocModal.value.visible = false;
+    showToast("文档已删除");
+    fetchData();
+  } catch (err: unknown) {
+    deleteDocModal.value.error = err instanceof Error ? err.message : String(err);
+  } finally {
+    deleteDocModal.value.loading = false;
   }
 }
 
