@@ -3,17 +3,51 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import { Create as $Create } from "@wailsio/runtime";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as client$0 from "../client/models.js";
 
-export interface DeleteDocumentParams {
+export class DeleteDocumentParams {
     "connectionId": string;
     "database": string;
     "collection": string;
     "dbType"?: string;
     "query": client$0.UpdateDocumentQuery;
+
+    /** Creates a new DeleteDocumentParams instance. */
+    constructor($$source: Partial<DeleteDocumentParams> = {}) {
+        if (!("connectionId" in $$source)) {
+            this["connectionId"] = "";
+        }
+        if (!("database" in $$source)) {
+            this["database"] = "";
+        }
+        if (!("collection" in $$source)) {
+            this["collection"] = "";
+        }
+        if (!("query" in $$source)) {
+            this["query"] = (new client$0.UpdateDocumentQuery());
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new DeleteDocumentParams instance from a string or object.
+     */
+    static createFrom($$source: any = {}): DeleteDocumentParams {
+        const $$createField4_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("query" in $$parsedSource) {
+            $$parsedSource["query"] = $$createField4_0($$parsedSource["query"]);
+        }
+        return new DeleteDocumentParams($$parsedSource as Partial<DeleteDocumentParams>);
+    }
 }
 
-export interface QueryDocumentsParams {
+export class QueryDocumentsParams {
     "connectionId": string;
     "database": string;
     "collection": string;
@@ -21,18 +55,111 @@ export interface QueryDocumentsParams {
     "limit": number;
     "offset": number;
     "filter": string;
+
+    /** Creates a new QueryDocumentsParams instance. */
+    constructor($$source: Partial<QueryDocumentsParams> = {}) {
+        if (!("connectionId" in $$source)) {
+            this["connectionId"] = "";
+        }
+        if (!("database" in $$source)) {
+            this["database"] = "";
+        }
+        if (!("collection" in $$source)) {
+            this["collection"] = "";
+        }
+        if (!("limit" in $$source)) {
+            this["limit"] = 0;
+        }
+        if (!("offset" in $$source)) {
+            this["offset"] = 0;
+        }
+        if (!("filter" in $$source)) {
+            this["filter"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new QueryDocumentsParams instance from a string or object.
+     */
+    static createFrom($$source: any = {}): QueryDocumentsParams {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new QueryDocumentsParams($$parsedSource as Partial<QueryDocumentsParams>);
+    }
 }
 
-export interface TestConnectionResult {
+export class TestConnectionResult {
     "success": boolean;
     "message": string;
+
+    /** Creates a new TestConnectionResult instance. */
+    constructor($$source: Partial<TestConnectionResult> = {}) {
+        if (!("success" in $$source)) {
+            this["success"] = false;
+        }
+        if (!("message" in $$source)) {
+            this["message"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TestConnectionResult instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TestConnectionResult {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new TestConnectionResult($$parsedSource as Partial<TestConnectionResult>);
+    }
 }
 
-export interface UpdateDocumentParams {
+export class UpdateDocumentParams {
     "connectionId": string;
     "database": string;
     "collection": string;
     "dbType"?: string;
     "query": client$0.UpdateDocumentQuery;
-    "update": { [_ in string]?: any } | null;
+    "update": { [_ in string]?: any };
+
+    /** Creates a new UpdateDocumentParams instance. */
+    constructor($$source: Partial<UpdateDocumentParams> = {}) {
+        if (!("connectionId" in $$source)) {
+            this["connectionId"] = "";
+        }
+        if (!("database" in $$source)) {
+            this["database"] = "";
+        }
+        if (!("collection" in $$source)) {
+            this["collection"] = "";
+        }
+        if (!("query" in $$source)) {
+            this["query"] = (new client$0.UpdateDocumentQuery());
+        }
+        if (!("update" in $$source)) {
+            this["update"] = {};
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new UpdateDocumentParams instance from a string or object.
+     */
+    static createFrom($$source: any = {}): UpdateDocumentParams {
+        const $$createField4_0 = $$createType0;
+        const $$createField5_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("query" in $$parsedSource) {
+            $$parsedSource["query"] = $$createField4_0($$parsedSource["query"]);
+        }
+        if ("update" in $$parsedSource) {
+            $$parsedSource["update"] = $$createField5_0($$parsedSource["update"]);
+        }
+        return new UpdateDocumentParams($$parsedSource as Partial<UpdateDocumentParams>);
+    }
 }
+
+// Private type creation functions
+const $$createType0 = client$0.UpdateDocumentQuery.createFrom;
+const $$createType1 = $Create.Map($Create.Any, $Create.Any);

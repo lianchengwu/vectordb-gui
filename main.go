@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"vectordb-1/backend/appinfo"
 	"vectordb-1/backend/service"
 )
 
@@ -24,6 +25,7 @@ func main() {
 		Description: "GUI Client for Tencent Cloud VectorDB",
 		Icon:        appIcon,
 		Services: []application.Service{
+			application.NewService(appinfo.NewService()),
 			application.NewService(connSvc),
 			application.NewService(vdbSvc),
 		},

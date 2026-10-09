@@ -109,13 +109,14 @@
           <span class="text-[10px]">{{ themeStore.isDark.value ? '深色' : '浅色' }}</span>
         </button>
         <span class="text-slate-400 dark:text-slate-600">|</span>
-        <span class="font-mono">v0.3.0</span>
+        <span class="font-mono">{{ version }}</span>
       </div>
     </div>
   </aside>
 </template>
 
 <script setup lang="ts">
+import { ref } from "vue";
 import {
   Database,
   Plus,
@@ -127,6 +128,7 @@ import {
 } from "lucide-vue-next";
 import { useConnectionStore } from "../stores/connection";
 import { useThemeStore } from "../stores/theme";
+import * as appinfo from "../../bindings/vectordb-1/backend/appinfo/service";
 import type { ConnectionConfig } from "../types";
 import AppSelect from "./AppSelect.vue";
 
@@ -136,6 +138,8 @@ const emit = defineEmits<{
 
 const connStore = useConnectionStore();
 const themeStore = useThemeStore();
+const version = ref("");
+appinfo.Version().then((v) => (version.value = `v${v}`));
 
 const {
   connections,

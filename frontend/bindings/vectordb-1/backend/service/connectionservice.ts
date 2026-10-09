@@ -3,7 +3,7 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wailsio/runtime";
+import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Create } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -20,12 +20,16 @@ export function DeleteConnection(id: string): $CancellablePromise<void> {
     return $Call.ByID(4051920909, id);
 }
 
-export function FetchDatabases(cfg: storage$0.ConnectionConfig): $CancellablePromise<client$0.DatabaseDetail[] | null> {
-    return $Call.ByID(3822898700, cfg);
+export function FetchDatabases(cfg: storage$0.ConnectionConfig): $CancellablePromise<client$0.DatabaseDetail[]> {
+    return $Call.ByID(3822898700, cfg).then(($result: any) => {
+        return $$createType1($result);
+    });
 }
 
-export function ListConnections(): $CancellablePromise<storage$0.ConnectionConfig[] | null> {
-    return $Call.ByID(1315905871);
+export function ListConnections(): $CancellablePromise<storage$0.ConnectionConfig[]> {
+    return $Call.ByID(1315905871).then(($result: any) => {
+        return $$createType3($result);
+    });
 }
 
 export function SaveConnection(cfg: storage$0.ConnectionConfig): $CancellablePromise<void> {
@@ -33,5 +37,15 @@ export function SaveConnection(cfg: storage$0.ConnectionConfig): $CancellablePro
 }
 
 export function TestConnection(cfg: storage$0.ConnectionConfig): $CancellablePromise<$models.TestConnectionResult | null> {
-    return $Call.ByID(717023674, cfg);
+    return $Call.ByID(717023674, cfg).then(($result: any) => {
+        return $$createType5($result);
+    });
 }
+
+// Private type creation functions
+const $$createType0 = client$0.DatabaseDetail.createFrom;
+const $$createType1 = $Create.Array($$createType0);
+const $$createType2 = storage$0.ConnectionConfig.createFrom;
+const $$createType3 = $Create.Array($$createType2);
+const $$createType4 = $models.TestConnectionResult.createFrom;
+const $$createType5 = $Create.Nullable($$createType4);

@@ -15,7 +15,7 @@
           </div>
           <div>
             <h3 class="text-sm font-semibold text-slate-900 dark:text-white tracking-tight">检查软件更新</h3>
-            <p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">当前版本: {{ CURRENT_VERSION }}</p>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">当前版本: {{ currentVersion }}</p>
           </div>
         </div>
 
@@ -127,7 +127,7 @@ import { useUpdaterStore } from "../stores/updater";
 
 const updaterStore = useUpdaterStore();
 const {
-  CURRENT_VERSION,
+  currentVersion,
   hasUpdate,
   latestRelease,
   isModalOpen,

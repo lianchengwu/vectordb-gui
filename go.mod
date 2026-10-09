@@ -3,7 +3,7 @@ module vectordb-1
 go 1.26.0
 
 require (
-	github.com/wailsapp/wails/v3 v3.0.0-beta.25
+	github.com/wailsapp/wails/v3 v3.0.0-beta.28
 	golang.org/x/crypto v0.53.0
 	golang.org/x/net v0.56.0
 )

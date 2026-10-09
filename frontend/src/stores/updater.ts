@@ -1,5 +1,6 @@
 import { ref } from "vue";
 import { Browser } from "@wailsio/runtime";
+import * as appinfo from "../../bindings/vectordb-1/backend/appinfo/service";
 
 export interface ReleaseAsset {
   name: string;
@@ -15,7 +16,9 @@ export interface ReleaseInfo {
   url: string;
   assets: ReleaseAsset[];
 }
-export const CURRENT_VERSION = "v0.3.0";
+// Version from backend/appinfo — single source of truth.
+const currentVersion = ref("");
+appinfo.Version().then((v) => (currentVersion.value = `v${v}`));
 const checking = ref(false);
 const hasUpdate = ref(false);
 const latestRelease = ref<ReleaseInfo | null>(null);
@@ -51,7 +54,7 @@ export function useUpdaterStore() {
       if (!resp.ok) {
         if (resp.status === 404) {
           if (manual) {
-            feedbackMessage.value = `当前已是最新版本 (${CURRENT_VERSION})`;
+            feedbackMessage.value = `当前已是最新版本 (${currentVersion.value})`;
             feedbackType.value = "info";
             isModalOpen.value = true;
           }
@@ -94,14 +97,14 @@ export function useUpdaterStore() {
         assets,
       };
 
-      if (compareVersions(tagName, CURRENT_VERSION) > 0) {
+      if (compareVersions(tagName, currentVersion.value) > 0) {
         hasUpdate.value = true;
         feedbackType.value = "success";
         isModalOpen.value = true;
       } else {
         hasUpdate.value = false;
         if (manual) {
-          feedbackMessage.value = `当前已是最新版本 (${CURRENT_VERSION})`;
+          feedbackMessage.value = `当前已是最新版本 (${currentVersion.value})`;
           feedbackType.value = "info";
           isModalOpen.value = true;
         }
@@ -131,7 +134,7 @@ export function useUpdaterStore() {
   }
 
   return {
-    CURRENT_VERSION,
+    currentVersion,
     checking,
     hasUpdate,
     latestRelease,
