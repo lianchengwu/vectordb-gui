@@ -199,14 +199,17 @@
             <td
               v-for="col in displayColumns"
               :key="col"
-              class="px-3 py-2 border-r border-slate-200/60 dark:border-slate-800/40 max-w-[280px] truncate"
+              @dblclick.stop="openFieldDetail(col, doc[col], doc)"
+              class="px-3 py-2 border-r border-slate-200/60 dark:border-slate-800/40 max-w-[280px] truncate cursor-pointer hover:bg-blue-100/40 dark:hover:bg-slate-700/30 transition select-text"
+              :title="`双击查看【${col}】完整内容\n${String(doc[col] ?? '')}`"
             >
               <!-- Vector column cell with badge -->
               <div v-if="isVectorValue(doc[col])" class="flex items-center gap-1.5">
                 <button
-                  @click="openDetail(doc)"
+                  type="button"
+                  @click.stop="openFieldDetail(col, doc[col], doc)"
                   class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:border-indigo-700/60 dark:text-indigo-300 dark:hover:bg-indigo-900/80 transition text-[11px]"
-                  title="点击查看高维向量详情"
+                  title="双击或点击查看高维向量详情"
                 >
                   <Sparkles class="w-3 h-3 text-indigo-500 dark:text-indigo-400" />
                   <span>{{ formatVectorSummary(doc[col]) }}</span>
@@ -214,7 +217,7 @@
               </div>
 
               <!-- Plain scalar/object values -->
-              <span v-else :class="isPrimaryKey(col) ? 'text-amber-800 dark:text-amber-200 font-semibold' : 'text-slate-800 dark:text-slate-300'" :title="String(doc[col] ?? '')">
+              <span v-else :class="isPrimaryKey(col) ? 'text-amber-800 dark:text-amber-200 font-semibold' : 'text-slate-800 dark:text-slate-300'">
                 {{ formatScalarValue(doc[col]) }}
               </span>
             </td>
@@ -252,6 +255,17 @@
       :is-open="detailModalOpen"
       :document="selectedDoc"
       @close="detailModalOpen = false"
+    />
+
+    <!-- Field Detail Modal -->
+    <FieldDetailModal
+      :is-open="fieldDetailModal.isOpen"
+      :field-name="fieldDetailModal.fieldName"
+      :field-value="fieldDetailModal.fieldValue"
+      :doc-id="fieldDetailModal.docId"
+      :is-primary-key="fieldDetailModal.isPrimaryKey"
+      :is-vector="fieldDetailModal.isVector"
+      @close="fieldDetailModal.isOpen = false"
     />
 
     <!-- Document Edit Modal -->
@@ -453,6 +467,7 @@ import { QueryDocuments } from "../../bindings/vectordb-1/backend/service/vector
 import { useVectorDBStore } from "../stores/vectordb";
 import type { CollectionMeta } from "../types";
 import JsonDetailModal from "./JsonDetailModal.vue";
+import FieldDetailModal from "./FieldDetailModal.vue";
 import DocumentEditModal from "./DocumentEditModal.vue";
 import AppSelect from "./AppSelect.vue";
 
@@ -484,6 +499,24 @@ const selectedDoc = ref<Record<string, unknown> | null>(null);
 
 const editModalOpen = ref(false);
 const editingDoc = ref<Record<string, unknown> | null>(null);
+
+interface FieldDetailModalState {
+  isOpen: boolean;
+  fieldName: string;
+  fieldValue: unknown;
+  docId: string;
+  isPrimaryKey: boolean;
+  isVector: boolean;
+}
+
+const fieldDetailModal = ref<FieldDetailModalState>({
+  isOpen: false,
+  fieldName: "",
+  fieldValue: null,
+  docId: "",
+  isPrimaryKey: false,
+  isVector: false,
+});
 
 interface DocContextMenuState {
   visible: boolean;
@@ -838,6 +871,17 @@ function nextPage() {
 function openDetail(doc: Record<string, unknown>) {
   selectedDoc.value = doc;
   detailModalOpen.value = true;
+}
+
+function openFieldDetail(col: string, val: unknown, doc: Record<string, unknown>) {
+  fieldDetailModal.value = {
+    isOpen: true,
+    fieldName: col,
+    fieldValue: val,
+    docId: getDocId(doc),
+    isPrimaryKey: isPrimaryKey(col),
+    isVector: isVectorField(col) || isVectorValue(val),
+  };
 }
 
 watch(
