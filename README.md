@@ -18,6 +18,10 @@
 
 ---
 
+## 🖼️ 界面预览
+
+![主界面](pictures/main.png)
+
 ## 📖 项目简介
 
 **Tencent Cloud VectorDB GUI** 是一款专为腾讯云向量数据库（Tencent Cloud VectorDB）设计的轻量级、跨平台桌面管理工具。旨在为算法工程师、开发者与数据库管理员提供直观的可视化界面，方便快速验证集群连通性、浏览数据库与集合（Collection）元数据、检查 Schema 与向量索引、以及分页检索和审视高维向量文档数据。
