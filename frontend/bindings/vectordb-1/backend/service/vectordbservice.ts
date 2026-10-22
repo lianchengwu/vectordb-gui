@@ -3,7 +3,7 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Create } from "@wailsio/runtime";
+import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -13,18 +13,31 @@ import * as client$0 from "../client/models.js";
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
+export function CreateCollection(params: $models.CreateCollectionParams): $CancellablePromise<void> {
+    return $Call.ByID(2157932675, params);
+}
+
+export function CreateDatabase(connID: string, database: string, dbType: string): $CancellablePromise<void> {
+    return $Call.ByID(4126180926, connID, database, dbType);
+}
+
 export function DeleteDocument(params: $models.DeleteDocumentParams): $CancellablePromise<void> {
     return $Call.ByID(1451783937, params);
 }
 
 export function DescribeCollection(connID: string, database: string, collection: string, dbType: string): $CancellablePromise<client$0.CollectionMeta | null> {
-    return $Call.ByID(3631453886, connID, database, collection, dbType).then(($result: any) => {
-        return $$createType1($result);
-    });
+    return $Call.ByID(3631453886, connID, database, collection, dbType);
 }
 
 export function DropCollection(connID: string, database: string, collection: string, dbType: string): $CancellablePromise<void> {
     return $Call.ByID(3951098962, connID, database, collection, dbType);
+}
+
+/**
+ * DropDatabase drops a database (and all collections/data inside) by type.
+ */
+export function DropDatabase(connID: string, database: string, dbType: string): $CancellablePromise<void> {
+    return $Call.ByID(3867373135, connID, database, dbType);
 }
 
 /**
@@ -35,39 +48,22 @@ export function InvalidateCache(connID: string): $CancellablePromise<void> {
     return $Call.ByID(1434046908, connID);
 }
 
-export function ListCollections(connID: string, database: string, dbType: string): $CancellablePromise<string[]> {
-    return $Call.ByID(3927618840, connID, database, dbType).then(($result: any) => {
-        return $$createType2($result);
-    });
+export function ListCollections(connID: string, database: string, dbType: string): $CancellablePromise<string[] | null> {
+    return $Call.ByID(3927618840, connID, database, dbType);
 }
 
-export function ListDatabases(connID: string): $CancellablePromise<string[]> {
-    return $Call.ByID(488518623, connID).then(($result: any) => {
-        return $$createType2($result);
-    });
+export function ListDatabases(connID: string): $CancellablePromise<string[] | null> {
+    return $Call.ByID(488518623, connID);
 }
 
-export function ListDatabasesDetailed(connID: string): $CancellablePromise<client$0.DatabaseDetail[]> {
-    return $Call.ByID(101094943, connID).then(($result: any) => {
-        return $$createType4($result);
-    });
+export function ListDatabasesDetailed(connID: string): $CancellablePromise<client$0.DatabaseDetail[] | null> {
+    return $Call.ByID(101094943, connID);
 }
 
 export function QueryDocuments(params: $models.QueryDocumentsParams): $CancellablePromise<client$0.QueryDocumentResponse | null> {
-    return $Call.ByID(3724154521, params).then(($result: any) => {
-        return $$createType6($result);
-    });
+    return $Call.ByID(3724154521, params);
 }
 
 export function UpdateDocument(params: $models.UpdateDocumentParams): $CancellablePromise<void> {
     return $Call.ByID(255719591, params);
 }
-
-// Private type creation functions
-const $$createType0 = client$0.CollectionMeta.createFrom;
-const $$createType1 = $Create.Nullable($$createType0);
-const $$createType2 = $Create.Array($Create.Any);
-const $$createType3 = client$0.DatabaseDetail.createFrom;
-const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = client$0.QueryDocumentResponse.createFrom;
-const $$createType6 = $Create.Nullable($$createType5);

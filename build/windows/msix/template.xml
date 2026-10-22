@@ -17,7 +17,7 @@
         PackageDisplayName="My Product"
         PublisherName="CN=My Company"
         PublisherDisplayName="My Company"
-        Version="0.4.1.0"
+        Version="0.5.0.0"
         PackageDescription="A tcvectordb-gui application">
         <Capabilities>
             <Capability Name="runFullTrust" />

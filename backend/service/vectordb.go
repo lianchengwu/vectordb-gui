@@ -220,6 +220,78 @@ func (s *VectorDBService) DropCollection(connID, database, collection, dbType st
 	return cli.DropCollection(ctx, database, collection, dbType)
 }
 
+func (s *VectorDBService) CreateDatabase(connID, database, dbType string) error {
+	cli, err := s.getClient(connID)
+	if err != nil {
+		return err
+	}
+	timeout := s.getTimeout(connID, 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	if dbType == "ai" {
+		return cli.CreateAIDatabase(ctx, database)
+	}
+	return cli.CreateDatabase(ctx, database)
+}
+
+// DropDatabase drops a database (and all collections/data inside) by type.
+func (s *VectorDBService) DropDatabase(connID, database, dbType string) error {
+	cli, err := s.getClient(connID)
+	if err != nil {
+		return err
+	}
+	timeout := s.getTimeout(connID, 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	if dbType == "ai" {
+		return cli.DropAIDatabase(ctx, database)
+	}
+	return cli.DropDatabase(ctx, database)
+}
+
+type CreateCollectionParams struct {
+	ConnectionID string               `json:"connectionId"`
+	Database     string               `json:"database"`
+	DbType       string               `json:"dbType,omitempty"`
+	Collection   string               `json:"collection"`
+	Description  string               `json:"description,omitempty"`
+	ReplicaNum   uint32               `json:"replicaNum,omitempty"`
+	ShardNum     uint32               `json:"shardNum,omitempty"`
+	Indexes      []client.IndexColumn `json:"indexes,omitempty"`
+	Language     string               `json:"language,omitempty"`
+}
+
+func (s *VectorDBService) CreateCollection(params CreateCollectionParams) error {
+	cli, err := s.getClient(params.ConnectionID)
+	if err != nil {
+		return err
+	}
+	timeout := s.getTimeout(params.ConnectionID, 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	if params.DbType == "ai" {
+		req := client.CreateAICollectionViewReq{
+			Database:       params.Database,
+			CollectionView: params.Collection,
+			Description:    params.Description,
+			Embedding: &client.DocumentEmbedding{
+				Language: params.Language,
+			},
+			Indexes: params.Indexes,
+		}
+		return cli.CreateAICollectionView(ctx, req)
+	}
+	req := client.CreateCollectionRequest{
+		Database:    params.Database,
+		Collection:  params.Collection,
+		Description: params.Description,
+		ReplicaNum:  params.ReplicaNum,
+		ShardNum:    params.ShardNum,
+		Indexes:     params.Indexes,
+	}
+	return cli.CreateCollection(ctx, req)
+}
+
 type QueryDocumentsParams struct {
 	ConnectionID string `json:"connectionId"`
 	Database     string `json:"database"`

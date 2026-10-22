@@ -20,6 +20,14 @@
       </div>
 
       <button
+        @click="onCreateMenu"
+        :disabled="!activeConnectionId"
+        class="p-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 dark:border-slate-700/60 dark:bg-slate-800/60 dark:hover:bg-slate-700 dark:text-slate-400 dark:hover:text-white transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-sm"
+        title="新建数据库或集合"
+      >
+        <Plus class="w-3.5 h-3.5" />
+      </button>
+      <button
         @click="refresh"
         :disabled="loading || !activeConnectionId"
         class="p-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 dark:border-slate-700/60 dark:bg-slate-800/60 dark:hover:bg-slate-700 dark:text-slate-400 dark:hover:text-white transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-sm"
@@ -265,6 +273,26 @@
           <span>刷新集合列表</span>
         </button>
 
+        <!-- New Collection -->
+        <button
+          type="button"
+          @click="handleDbNewCollection"
+          class="w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-700 dark:text-slate-300"
+        >
+          <Plus class="w-3.5 h-3.5 text-slate-400" />
+          <span>新建集合</span>
+        </button>
+
+        <!-- Drop Database -->
+        <button
+          type="button"
+          @click="handleDbPromptDrop"
+          class="w-full px-3 py-1.5 text-left flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition font-medium"
+        >
+          <Trash2 class="w-3.5 h-3.5" />
+          <span>删除数据库</span>
+        </button>
+
         <!-- Copy Database Name -->
         <button
           type="button"
@@ -494,6 +522,101 @@
         <span>{{ toastMessage }}</span>
       </div>
     </Teleport>
+
+    <!-- Create Database Modal -->
+    <CreateDatabaseModal
+      v-if="createDbModal.visible"
+      @closed="createDbModal.visible = false"
+      @created="onDatabaseCreated"
+    />
+
+    <!-- Create Collection Modal -->
+    <CreateCollectionModal
+      v-if="createCollModal.visible"
+      :database="createCollModal.database"
+      :db-type="createCollModal.dbType"
+      @closed="createCollModal.visible = false"
+      @created="onCollectionCreated"
+    />
+
+    <!-- Drop Database Confirmation Modal -->
+    <Teleport to="body">
+      <div
+        v-if="dropDbModal.visible"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 text-xs select-none"
+        @click.self="!dropDbModal.loading && (dropDbModal.visible = false)"
+      >
+        <div class="w-full max-w-md rounded-xl bg-white border border-slate-200 shadow-2xl overflow-hidden flex flex-col text-slate-800 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 transition-colors duration-200">
+          <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2 font-semibold text-sm text-rose-600 dark:text-rose-400">
+              <AlertTriangle class="w-4 h-4" />
+              <span>删除数据库</span>
+            </div>
+            <button
+              type="button"
+              @click="!dropDbModal.loading && (dropDbModal.visible = false)"
+              class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            >
+              <X class="w-4 h-4" />
+            </button>
+          </div>
+
+          <div class="p-5 space-y-3">
+            <p class="text-slate-600 dark:text-slate-300">
+              确定要删除数据库
+              <span class="font-mono font-semibold text-slate-900 dark:text-white px-1">{{ dropDbModal.db?.name }}</span> 吗？
+            </p>
+            <div class="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-950/30 dark:border-rose-800/50 dark:text-rose-300 flex items-start gap-2">
+              <AlertTriangle class="w-4 h-4 shrink-0 mt-0.5" />
+              <div class="space-y-1">
+                <p class="font-medium">此操作不可恢复！</p>
+                <p>将级联删除该数据库内的所有集合、文件与数据。</p>
+              </div>
+            </div>
+            <div class="space-y-1.5">
+              <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                输入数据库名称 <span class="font-mono">{{ dropDbModal.db?.name }}</span> 以确认：
+              </label>
+              <input
+                v-model="dropDbModal.confirmName"
+                type="text"
+                class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500/40 focus:border-rose-500 transition font-mono"
+                :disabled="dropDbModal.loading"
+                placeholder="输入数据库名称"
+              />
+            </div>
+            <div
+              v-if="dropDbModal.error"
+              class="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-950/30 dark:border-rose-800/50 dark:text-rose-300 flex items-start gap-1.5"
+            >
+              <AlertCircle class="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span class="break-all">{{ dropDbModal.error }}</span>
+            </div>
+          </div>
+
+          <div class="px-5 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 flex items-center justify-end gap-2.5 shrink-0">
+            <button
+              type="button"
+              @click="!dropDbModal.loading && (dropDbModal.visible = false)"
+              class="px-4 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              :disabled="dropDbModal.loading"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              @click="confirmDropDatabase"
+              class="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-medium transition flex items-center gap-1.5 disabled:opacity-50 shadow-sm"
+              :disabled="dropDbModal.loading || dropDbModal.confirmName !== dropDbModal.db?.name"
+            >
+              <Loader2 v-if="dropDbModal.loading" class="w-3.5 h-3.5 animate-spin" />
+              <Trash2 v-else class="w-3.5 h-3.5" />
+              <span>{{ dropDbModal.loading ? "删除中..." : "确认删除" }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -515,7 +638,7 @@ import {
   CheckCircle2,
   ExternalLink,
   Copy,
-  MoreVertical,
+  Plus,
   FolderOpen,
   Folder,
   Layers,
@@ -524,6 +647,8 @@ import {
 import type { DatabaseDetail } from "../types";
 import { useVectorDBStore } from "../stores/vectordb";
 import { useConnectionStore } from "../stores/connection";
+import CreateDatabaseModal from "./CreateDatabaseModal.vue";
+import CreateCollectionModal from "./CreateCollectionModal.vue";
 
 const vdbStore = useVectorDBStore();
 const connStore = useConnectionStore();
@@ -606,6 +731,28 @@ const dbContextMenu = ref<DbContextMenuState>({
 
 const dbPropertiesModal = ref<DbPropertiesModalState>({
   visible: false,
+  db: null,
+});
+
+const createDbModal = ref<{ visible: boolean }>({ visible: false });
+
+const createCollModal = ref<{ visible: boolean; database: string; dbType: string }>({
+  visible: false,
+  database: "",
+  dbType: "base",
+});
+
+const dropDbModal = ref<{
+  visible: boolean;
+  loading: boolean;
+  error: string;
+  confirmName: string;
+  db: DatabaseDetail | null;
+}>({
+  visible: false,
+  loading: false,
+  error: "",
+  confirmName: "",
   db: null,
 });
 
@@ -750,6 +897,66 @@ function handleDbProperties() {
   }
 }
 
+function handleDbNewCollection() {
+  const db = dbContextMenu.value.db;
+  closeDbContextMenu();
+  if (db) {
+    createCollModal.value = {
+      visible: true,
+      database: db.name,
+      dbType: db.dbType,
+    };
+  }
+}
+
+function handleDbPromptDrop() {
+  const db = dbContextMenu.value.db;
+  closeDbContextMenu();
+  if (db) {
+    dropDbModal.value = {
+      visible: true,
+      loading: false,
+      error: "",
+      confirmName: "",
+      db,
+    };
+  }
+}
+
+async function confirmDropDatabase() {
+  const db = dropDbModal.value.db;
+  if (!activeConnectionId.value || !db) return;
+  dropDbModal.value.loading = true;
+  dropDbModal.value.error = "";
+  try {
+    await vdbStore.dropDatabase(activeConnectionId.value, db.name, db.dbType);
+    dropDbModal.value.visible = false;
+    showToast(`数据库 "${db.name}" 已删除`);
+  } catch (err: unknown) {
+    dropDbModal.value.error = err instanceof Error ? err.message : String(err);
+  } finally {
+    dropDbModal.value.loading = false;
+  }
+}
+
+function onCreateMenu() {
+  createDbModal.value = { visible: true };
+}
+
+function onDatabaseCreated(database: string) {
+  createDbModal.value.visible = false;
+  showToast(`数据库 "${database}" 创建成功`);
+  expandedDbs.value[database] = true;
+}
+
+function onCollectionCreated(database: string, collection: string) {
+  createCollModal.value.visible = false;
+  showToast(`集合 "${collection}" 创建成功`);
+  if (activeConnectionId.value) {
+    openCollectionTab(activeConnectionId.value, database, collection);
+  }
+}
+
 function handleOpenCollection() {
   if (activeConnectionId.value && contextMenu.value.database && contextMenu.value.collection) {
     openCollectionTab(activeConnectionId.value, contextMenu.value.database, contextMenu.value.collection);
@@ -830,6 +1037,9 @@ function handleKeyDown(e: KeyboardEvent) {
       closeDbContextMenu();
     } else if (deleteModal.value.visible && !deleteModal.value.loading) {
       closeDeleteModal();
+    } else if (dropDbModal.value.visible && !dropDbModal.value.loading) {
+      dropDbModal.value.visible = false;
+      dropDbModal.value.error = "";
     } else if (dbPropertiesModal.value.visible) {
       dbPropertiesModal.value.visible = false;
     }

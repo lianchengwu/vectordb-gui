@@ -56,3 +56,4 @@ Thumbs.db
 .env.*
 *.local
 connections.json
+vendor/

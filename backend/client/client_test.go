@@ -128,6 +128,66 @@ func TestVectorDBClient(t *testing.T) {
 		}`))
 	})
 
+	// Mock /database/create, /database/drop, /ai/database/create
+	mux.HandleFunc("/database/create", func(w http.ResponseWriter, r *http.Request) {
+		var req CreateDatabaseRequest
+		json.NewDecoder(r.Body).Decode(&req)
+		if req.Database == "" {
+			http.Error(w, `{"code":400,"msg":"database required"}`, http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"code": 0, "msg": "operation success", "affectedCount": 1}`))
+	})
+	mux.HandleFunc("/ai/database/create", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"code": 0, "msg": "operation success", "affectedCount": 1}`))
+	})
+	mux.HandleFunc("/database/drop", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"code": 0, "msg": "operation success", "affectedCount": 1}`))
+	})
+
+	// Mock /collection/create
+	mux.HandleFunc("/collection/create", func(w http.ResponseWriter, r *http.Request) {
+		var req CreateCollectionRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"code":400,"msg":"bad request"}`, http.StatusBadRequest)
+			return
+		}
+		if req.Database == "" || req.Collection == "" || len(req.Indexes) == 0 {
+			http.Error(w, `{"code":400,"msg":"database, collection and indexes required"}`, http.StatusBadRequest)
+			return
+		}
+		hasPK := false
+		for _, idx := range req.Indexes {
+			if idx.IndexType == "primaryKey" {
+				hasPK = true
+			}
+		}
+		if !hasPK {
+			http.Error(w, `{"code":400,"msg":"primary key index required"}`, http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"code": 0, "msg": "operation success", "affectedCount": 1}`))
+	})
+
+	// Mock /ai/collectionView/create
+	mux.HandleFunc("/ai/collectionView/create", func(w http.ResponseWriter, r *http.Request) {
+		var req CreateAICollectionViewReq
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"code":400,"msg":"bad request"}`, http.StatusBadRequest)
+			return
+		}
+		if req.Database == "" || req.CollectionView == "" {
+			http.Error(w, `{"code":400,"msg":"database and collectionView required"}`, http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"code": 0, "msg": "operation success", "affectedCount": 1}`))
+	})
+
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -180,6 +240,48 @@ func TestVectorDBClient(t *testing.T) {
 	}, map[string]interface{}{"title": "updated title"})
 	if updateErr != nil {
 		t.Fatalf("UpdateDocument failed: %v", updateErr)
+	}
+
+	// Test CreateDatabase
+	if err := cli.CreateDatabase(context.Background(), "db_new"); err != nil {
+		t.Fatalf("CreateDatabase failed: %v", err)
+	}
+	// Test CreateAIDatabase
+	if err := cli.CreateAIDatabase(context.Background(), "db_ai_new"); err != nil {
+		t.Fatalf("CreateAIDatabase failed: %v", err)
+	}
+	// Test DropDatabase
+	if err := cli.DropDatabase(context.Background(), "db_test"); err != nil {
+		t.Fatalf("DropDatabase failed: %v", err)
+	}
+	// Test CreateCollection (Base)
+	if err := cli.CreateCollection(context.Background(), CreateCollectionRequest{
+		Database:   "db_test",
+		Collection: "coll_new",
+		Indexes: []IndexColumn{
+			{FieldName: "id", FieldType: "string", IndexType: "primaryKey"},
+			{FieldName: "vector", FieldType: "vector", IndexType: "HNSW", MetricType: "COSINE", Dimension: 768},
+		},
+	}); err != nil {
+		t.Fatalf("CreateCollection failed: %v", err)
+	}
+	// Test CreateCollection (missing PK index -> server rejects)
+	if err := cli.CreateCollection(context.Background(), CreateCollectionRequest{
+		Database:   "db_test",
+		Collection: "coll_bad",
+		Indexes: []IndexColumn{
+			{FieldName: "vector", FieldType: "vector", IndexType: "HNSW", MetricType: "COSINE", Dimension: 768},
+		},
+	}); err == nil {
+		t.Fatalf("CreateCollection without primary key index should fail")
+	}
+	// Test CreateAICollectionView
+	if err := cli.CreateAICollectionView(context.Background(), CreateAICollectionViewReq{
+		Database:       "db_ai",
+		CollectionView: "cv_new",
+		Embedding:      &DocumentEmbedding{Language: "zh"},
+	}); err != nil {
+		t.Fatalf("CreateAICollectionView failed: %v", err)
 	}
 
 	// Test Ping
@@ -286,5 +388,3 @@ func TestFilterAIRuntimeFields(t *testing.T) {
 		t.Errorf("expected status to be filtered out")
 	}
 }
-
-

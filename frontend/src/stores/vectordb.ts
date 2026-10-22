@@ -5,6 +5,9 @@ import {
   ListCollections,
   DescribeCollection,
   DropCollection,
+  CreateDatabase,
+  CreateCollection,
+  DropDatabase,
   UpdateDocument,
   DeleteDocument,
 } from "../../bindings/vectordb-1/backend/service/vectordbservice";
@@ -195,6 +198,67 @@ export function useVectorDBStore() {
     matchingTabs.forEach((t) => closeTab(t.id));
   }
 
+  async function createDatabase(connId: string, database: string, dbType: string) {
+    if (!connId || !database) return;
+    await CreateDatabase(connId, database, dbType);
+    await loadDatabases(connId);
+  }
+
+  async function createCollection(
+    connId: string,
+    database: string,
+    collection: string,
+    dbType: string,
+    options: {
+      description?: string;
+      replicaNum?: number;
+      shardNum?: number;
+      indexes?: Array<{
+        fieldName: string;
+        fieldType: string;
+        indexType: string;
+        dimension?: number;
+        metricType?: string;
+      }>;
+      language?: string;
+    }
+  ) {
+    if (!connId || !database || !collection) return;
+    const type = dbType || getDbType(database);
+    await CreateCollection({
+      connectionId: connId,
+      database,
+      dbType: type,
+      collection,
+      description: options.description || "",
+      replicaNum: options.replicaNum ?? 2,
+      shardNum: options.shardNum ?? 1,
+      indexes: (options.indexes || []).map((idx) => ({
+        fieldName: idx.fieldName,
+        fieldType: idx.fieldType,
+        indexType: idx.indexType,
+        dimension: idx.dimension || 0,
+        metricType: idx.metricType || "",
+      })),
+      language: options.language || "",
+    });
+    await refreshDatabase(connId, database, type);
+  }
+
+  async function dropDatabase(connId: string, database: string, dbType?: string) {
+    if (!connId || !database) return;
+    const type = dbType || getDbType(database);
+    await DropDatabase(connId, database, type);
+
+    // Close tabs belonging to the dropped database
+    closeTabsByDatabase(database);
+
+    // Remove local state
+    delete collectionsByDb.value[database];
+    delete expandedDbs.value[database];
+    databases.value = databases.value.filter((d) => d.name !== database);
+  }
+
   async function updateDocument(
     connId: string,
     database: string,
@@ -275,6 +339,9 @@ export function useVectorDBStore() {
     closeAllTabs,
     deleteCollection,
     updateDocument,
+    createDatabase,
+    createCollection,
+    dropDatabase,
     deleteDocument,
     reset,
   };

@@ -173,6 +173,58 @@ type AICollectionViewDropReq struct {
 	CollectionView string `json:"collectionView"`
 }
 
+type CreateDatabaseRequest struct {
+	Database string `json:"database"`
+}
+
+type CreateDatabaseResponse struct {
+	ResponseHeader
+	AffectedCount int `json:"affectedCount,omitempty"`
+}
+
+type DropDatabaseResponse struct {
+	ResponseHeader
+	AffectedCount int `json:"affectedCount,omitempty"`
+}
+
+type CreateCollectionRequest struct {
+	Database    string        `json:"database"`
+	Collection  string        `json:"collection"`
+	Description string        `json:"description,omitempty"`
+	ReplicaNum  uint32        `json:"replicaNum,omitempty"`
+	ShardNum    uint32        `json:"shardNum,omitempty"`
+	Indexes     []IndexColumn `json:"indexes"`
+}
+
+type CreateCollectionResponse struct {
+	ResponseHeader
+	AffectedCount int `json:"affectedCount,omitempty"`
+}
+
+type DocumentEmbedding struct {
+	Language             string `json:"language,omitempty"`
+	EnableWordsEmbedding *bool  `json:"enableWordsEmbedding,omitempty"`
+}
+
+type SplitterPreprocess struct {
+	AppendTitleToChunk    *bool `json:"appendTitleToChunk,omitempty"`
+	AppendKeywordsToChunk *bool `json:"appendKeywordsToChunk,omitempty"`
+}
+
+type CreateAICollectionViewReq struct {
+	Database           string              `json:"database"`
+	CollectionView     string              `json:"collectionView"`
+	Description        string              `json:"description,omitempty"`
+	Embedding          *DocumentEmbedding  `json:"embedding,omitempty"`
+	SplitterPreprocess *SplitterPreprocess `json:"splitterPreprocess,omitempty"`
+	Indexes            []IndexColumn       `json:"indexes,omitempty"`
+}
+
+type CreateAICollectionViewRes struct {
+	ResponseHeader
+	AffectedCount int `json:"affectedCount,omitempty"`
+}
+
 type FieldMeta struct {
 	FieldName   string `json:"fieldName"`
 	FieldType   string `json:"fieldType"`

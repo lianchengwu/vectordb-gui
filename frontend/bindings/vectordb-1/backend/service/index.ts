@@ -8,7 +8,8 @@ export {
     VectorDBService
 };
 
-export {
+export type {
+    CreateCollectionParams,
     DeleteDocumentParams,
     QueryDocumentsParams,
     TestConnectionResult,

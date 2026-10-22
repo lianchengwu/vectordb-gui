@@ -399,6 +399,84 @@ func (c *Client) DropCollection(ctx context.Context, database, collection, dbTyp
 	return nil
 }
 
+func (c *Client) CreateDatabase(ctx context.Context, database string) error {
+	req := CreateDatabaseRequest{Database: database}
+	var resp CreateDatabaseResponse
+	if err := c.doRequest(ctx, http.MethodPost, "/database/create", req, &resp); err != nil {
+		return err
+	}
+	if resp.Code != 0 {
+		return fmt.Errorf("api error (%d): %s", resp.Code, resp.Message)
+	}
+	return nil
+}
+
+func (c *Client) CreateAIDatabase(ctx context.Context, database string) error {
+	req := CreateDatabaseRequest{Database: database}
+	var resp CreateDatabaseResponse
+	if err := c.doRequest(ctx, http.MethodPost, "/ai/database/create", req, &resp); err != nil {
+		return err
+	}
+	if resp.Code != 0 {
+		return fmt.Errorf("api error (%d): %s", resp.Code, resp.Message)
+	}
+	return nil
+}
+
+// DropDatabase drops a database and all collections and data inside it.
+func (c *Client) DropDatabase(ctx context.Context, database string) error {
+	req := CreateDatabaseRequest{Database: database}
+	var resp DropDatabaseResponse
+	if err := c.doRequest(ctx, http.MethodPost, "/database/drop", req, &resp); err != nil {
+		return err
+	}
+	if resp.Code != 0 {
+		return fmt.Errorf("api error (%d): %s", resp.Code, resp.Message)
+	}
+	return nil
+}
+
+// DropAIDatabase drops an AI database and all collections and data inside it.
+func (c *Client) DropAIDatabase(ctx context.Context, database string) error {
+	req := CreateDatabaseRequest{Database: database}
+	var resp DropDatabaseResponse
+	if err := c.doRequest(ctx, http.MethodPost, "/ai/database/drop", req, &resp); err != nil {
+		return err
+	}
+	if resp.Code != 0 {
+		return fmt.Errorf("api error (%d): %s", resp.Code, resp.Message)
+	}
+	return nil
+}
+
+func (c *Client) CreateCollection(ctx context.Context, req CreateCollectionRequest) error {
+	if req.ShardNum == 0 {
+		req.ShardNum = 1
+	}
+	if req.ReplicaNum == 0 {
+		req.ReplicaNum = 2
+	}
+	var resp CreateCollectionResponse
+	if err := c.doRequest(ctx, http.MethodPost, "/collection/create", req, &resp); err != nil {
+		return err
+	}
+	if resp.Code != 0 {
+		return fmt.Errorf("api error (%d): %s", resp.Code, resp.Message)
+	}
+	return nil
+}
+
+func (c *Client) CreateAICollectionView(ctx context.Context, req CreateAICollectionViewReq) error {
+	var resp CreateAICollectionViewRes
+	if err := c.doRequest(ctx, http.MethodPost, "/ai/collectionView/create", req, &resp); err != nil {
+		return err
+	}
+	if resp.Code != 0 {
+		return fmt.Errorf("api error (%d): %s", resp.Code, resp.Message)
+	}
+	return nil
+}
+
 func (c *Client) QueryDocuments(ctx context.Context, database, collection, dbType string, limit, offset int, filter string) (*QueryDocumentResponse, error) {
 	if limit <= 0 {
 		limit = 20
