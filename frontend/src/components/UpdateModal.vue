@@ -103,12 +103,23 @@
         </button>
         <span v-else></span>
 
-        <button
-          @click="closeModal"
-          class="px-4 py-1.5 rounded-lg text-xs font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white transition"
-        >
-          关闭
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            @click="openReleaseUrl('https://github.com/lianchengwu/vectordb-gui')"
+            class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-750 dark:text-slate-200 text-xs font-medium transition flex items-center gap-1.5 shadow-sm"
+          >
+            <Github class="w-3.5 h-3.5 text-blue-500" />
+            GitHub
+          </button>
+
+          <button
+            @click="closeModal"
+            class="px-4 py-1.5 rounded-lg text-xs font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white transition"
+          >
+            关闭
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -122,6 +133,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
+  Github,
 } from "lucide-vue-next";
 import { useUpdaterStore } from "../stores/updater";
 

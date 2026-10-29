@@ -3,4 +3,4 @@
 package appinfo
 
 // Version is the application version, bumped per release.
-const Version = "0.5.0"
+const Version = "0.5.1"
